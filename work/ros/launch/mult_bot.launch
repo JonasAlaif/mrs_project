@@ -1,0 +1,32 @@
+<launch>
+  <arg name="model" default="burger" doc="model type [burger, waffle, waffle_pi]"/>
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find mrs_project)/work/ros/worlds/simple.world"/>
+    <arg name="paused" value="true"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+  </include>
+
+  <group ns="turtlebot_1">
+    <include file="$(find mrs_project)/work/ros/launch/one_bot.launch">
+      <arg name="model" value="$(arg model)"/>
+      <arg name="name" value="bot1"/>
+      <arg name="x_pos" value="-1.0"/>
+      <arg name="y_pos" value="-1.0"/>
+      <arg name="z_pos" value="0.0"/>
+    </include>
+  </group>
+
+  <group ns="turtlebot_2">
+    <include file="$(find mrs_project)/work/ros/launch/one_bot.launch">
+      <arg name="model" value="$(arg model)"/>
+      <arg name="name" value="bot2"/>
+      <arg name="x_pos" value="1.0"/>
+      <arg name="y_pos" value="1.0"/>
+      <arg name="z_pos" value="0.0"/>
+    </include>
+  </group>
+</launch>
