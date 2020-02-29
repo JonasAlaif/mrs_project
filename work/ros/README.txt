@@ -1,14 +1,14 @@
 To run Gazebo:
-> roslaunch exercises gazebo_simple.launch
+> roslaunch mrs_project gazebo_simple.launch
 
 To run potential field navigation:
-> roslaunch exercises potential_field_navigation.launch
+> roslaunch mrs_project potential_field_navigation.launch
 
 To run RRT navigation:
-> roslaunch exercises rrt_navigation.launch
+> roslaunch mrs_project rrt_navigation.launch
 
 To run RViz:
-> roslaunch exercises rviz.launch
+> roslaunch mrs_project rviz.launch
 
 To run SLAM:
-> roslaunch exercises slam.launch
+> roslaunch mrs_project slam.launch
