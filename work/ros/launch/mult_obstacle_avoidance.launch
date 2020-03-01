@@ -1,0 +1,13 @@
+<launch>
+	<arg name="mode"/>
+
+    <group ns="turtlebot_1">
+        <arg name="name" default="turtlebot_1"/>
+	    <node pkg="mrs_project" type="mult_obstacle_avoidance.py" name="$(arg name)_obstacle_avoidance" args="--mode=$(arg mode) --name=$(arg name)" output="screen"></node>
+    </group>
+
+    <group ns="turtlebot_2">
+        <arg name="name" default="turtlebot_2"/>
+	    <node pkg="mrs_project" type="mult_obstacle_avoidance.py" name="$(arg name)_obstacle_avoidance" args="--mode=$(arg mode) --name=$(arg name)" output="screen"></node>
+    </group>
+</launch>
