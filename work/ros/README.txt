@@ -1,5 +1,5 @@
 To run Gazebo:
-> roslaunch mrs_project gazebo_simple.launch
+> roslaunch mrs_project gazebo_project.launch
 
 To run potential field navigation:
 > roslaunch mrs_project potential_field_navigation.launch
