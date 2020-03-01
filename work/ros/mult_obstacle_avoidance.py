@@ -24,10 +24,10 @@ def sigmoid(x):
 def braitenberg(front, front_left, front_right, left, right):
   # u in [m/s]
   # w in [rad/s] going counter-clockwise.
-  closestDistSide = 0.05
-  closestDistFront = 0.4
-  u = sigmoid(front-closestDistFront) * sigmoid(front_left+closestDistSide) * sigmoid(front_right+closestDistSide) * 3
-  w = sigmoid(5/front_right + 1/sigmoid(right) - 5/front_left - 1/sigmoid(left))
+  closestDistSide = 0.02
+  closestDistFront = 0.2
+  u = sigmoid(front-closestDistFront) * sigmoid(front_left+closestDistSide) * sigmoid(front_right+closestDistSide) * 5
+  w = sigmoid(5/front_right + 1/sigmoid(right) - 5/front_left - 1/sigmoid(left)) / 3
   return u, w
 
 
