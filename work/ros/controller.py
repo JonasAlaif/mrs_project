@@ -5,12 +5,14 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import numpy as np
 import os
 import rospy
 import select
 import socket
 import sys
 import time
+import yaml
 
 # Robot motion commands:
 # http://docs.ros.org/api/geometry_msgs/html/msg/Twist.html
@@ -23,9 +25,38 @@ try:
 except ImportError:
   raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
 
+directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../python')
+sys.path.insert(0, directory)
+try:
+  import rrt
+except ImportError:
+  raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
+
+# Constants for occupancy grid.
+FREE = 0
+UNKNOWN = 1
+OCCUPIED = 2
+
 def run(args):
   avoidance_method = getattr(obstacle_avoidance, args.mode)
   rospy.init_node('controller')
+  occupancy_grid = None
+  if args.map is not None:
+    # Load map.
+    with open(args.map + '.yaml') as fp:
+      filedata = yaml.load(fp)
+    img = rrt.read_pgm(os.path.join(os.path.dirname(args.map), filedata['image']))
+    occupancy_grid = np.empty_like(img, dtype=np.int8)
+    occupancy_grid[:] = UNKNOWN
+    occupancy_grid[img < .1] = OCCUPIED
+    occupancy_grid[img > .9] = FREE
+    # Transpose (undo ROS processing).
+    occupancy_grid = occupancy_grid.T
+    # Invert Y-axis.
+    occupancy_grid = occupancy_grid[:, ::-1]
+    occupancy_grid = rrt.OccupancyGrid(occupancy_grid, filedata['origin'], filedata['resolution'])
+
+
 
   servsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   servsocket.bind(('', int(args.port)))
@@ -85,5 +116,6 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Controls the robots')
   parser.add_argument('--mode', action='store', default='braitenberg', help='Method.', choices=['braitenberg', 'rule_based'])
   parser.add_argument('--port', action='store', default='12321', help='Port.')
+  parser.add_argument('--map', action='store', default=None, help='Map.')
   args, unknown = parser.parse_known_args()
   run(args)
