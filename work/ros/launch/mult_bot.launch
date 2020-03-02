@@ -13,7 +13,7 @@
   <group ns="turtlebot_1">
     <include file="$(find mrs_project)/work/ros/launch/one_bot.launch">
       <arg name="model" value="$(arg model)"/>
-      <arg name="name" value="bot1"/>
+      <arg name="name" value="turtlebot_1"/>
       <arg name="x_pos" value="-1.0"/>
       <arg name="y_pos" value="-1.0"/>
       <arg name="z_pos" value="0.0"/>
@@ -23,7 +23,7 @@
   <group ns="turtlebot_2">
     <include file="$(find mrs_project)/work/ros/launch/one_bot.launch">
       <arg name="model" value="$(arg model)"/>
-      <arg name="name" value="bot2"/>
+      <arg name="name" value="turtlebot_2"/>
       <arg name="x_pos" value="1.0"/>
       <arg name="y_pos" value="1.0"/>
       <arg name="z_pos" value="0.0"/>
