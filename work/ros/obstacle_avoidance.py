@@ -67,8 +67,11 @@ def rule_based(front, front_left, front_right, left, right):
 
 
 class SimpleLaser(object):
-  def __init__(self):
-    rospy.Subscriber('/scan', LaserScan, self.callback)
+  def __init__(self, name):
+    if name is not None:
+      rospy.Subscriber('/' + name + '/scan', LaserScan, self.callback)
+    else:
+      rospy.Subscriber('/scan', LaserScan, self.callback)
     self._angles = [0., np.pi / 4., -np.pi / 4., np.pi / 2., -np.pi / 2.]
     self._width = np.pi / 180. * 10.  # 10 degrees cone of view.
     self._measurements = [float('inf')] * len(self._angles)
@@ -144,7 +147,7 @@ def run(args):
   # Update control every 100 ms.
   rate_limiter = rospy.Rate(100)
   publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
-  laser = SimpleLaser()
+  laser = SimpleLaser(None)
   # Keep track of groundtruth position for plotting purposes.
   groundtruth = GroundtruthPose()
   pose_history = []
