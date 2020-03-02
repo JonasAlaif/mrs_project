@@ -1,7 +1,7 @@
 <launch>
 
   <!-- Note: name MUST be unique for each different instance of this -->
-  <arg name="name" default="bot0"/>
+  <arg name="name" default="turtlebot_0"/>
   <arg name="model" default="burger" doc="model type [burger, waffle, waffle_pi]"/>
   <arg name="x_pos" default="-1.0"/>
   <arg name="y_pos" default="-1.0"/>

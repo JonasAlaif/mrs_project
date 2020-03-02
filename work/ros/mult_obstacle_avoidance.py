@@ -6,7 +6,9 @@ from __future__ import print_function
 
 import argparse
 import numpy as np
+import os
 import rospy
+import sys
 
 # Robot motion commands:
 # http://docs.ros.org/api/geometry_msgs/html/msg/Twist.html
@@ -18,104 +20,22 @@ from sensor_msgs.msg import LaserScan
 from gazebo_msgs.msg import ModelStates
 from tf.transformations import euler_from_quaternion
 
-def sigmoid(x):
-  return np.tanh(x/2)
-
-def braitenberg(front, front_left, front_right, left, right):
-  # u in [m/s]
-  # w in [rad/s] going counter-clockwise.
-  closestDistSide = 0.02
-  closestDistFront = 0.2
-  u = sigmoid(front-closestDistFront) * sigmoid(front_left+closestDistSide) * sigmoid(front_right+closestDistSide) * 5
-  w = sigmoid(5/front_right + 1/sigmoid(right) - 5/front_left - 1/sigmoid(left)) / 3
-  return u, w
-
-
-def rule_based(front, front_left, front_right, left, right):
-  u = 0.  # [m/s]
-  w = 0.  # [rad/s] going counter-clockwise.
-
-  if front < 0.4 or front_right < 0.2 or front_left < 0.2:
-    # Hit wall, turn left to drive with wall on right
-    u = -0.2
-    w = 0.6
-  elif front < 0.8:
-    u = 0.2
-    w = 0.3
-  elif front_right > right * 1.6:
-    # Turned to far away from wall, keep perpendicular to wall
-    u = 0.3
-    w = -0.4
-  elif right < 0.7 and front_right < right * 1.1:
-    # Driving towards wall, keep perpendicular
-    u = 0.2
-    w = 0.2
-  elif right < 0.3:
-    # Driving too close to wall, back off
-    u = 0.15
-    w = 0.3
-  elif right < 0.7 and front_right > right * 1.5:
-    # Driving away wall, keep perpendicular
-    u = 0.3
-    w = -0.2
-  elif right < 0.7:
-    u = 0.5
-  else:
-    u = 0.8
-
-  return u, w
-
-
-class SimpleLaser(object):
-  def __init__(self, name):
-    rospy.Subscriber('/' + name + '/scan', LaserScan, self.callback)
-    self._angles = [0., np.pi / 4., -np.pi / 4., np.pi / 2., -np.pi / 2.]
-    self._width = np.pi / 180. * 10.  # 10 degrees cone of view.
-    self._measurements = [float('inf')] * len(self._angles)
-    self._indices = None
-
-  def callback(self, msg):
-    # Helper for angles.
-    def _within(x, a, b):
-      pi2 = np.pi * 2.
-      x %= pi2
-      a %= pi2
-      b %= pi2
-      if a < b:
-        return a <= x and x <= b
-      return a <= x or x <= b
-
-    # Compute indices the first time.
-    if self._indices is None:
-      self._indices = [[] for _ in range(len(self._angles))]
-      for i, d in enumerate(msg.ranges):
-        angle = msg.angle_min + i * msg.angle_increment
-        for j, center_angle in enumerate(self._angles):
-          if _within(angle, center_angle - self._width / 2., center_angle + self._width / 2.):
-            self._indices[j].append(i)
-
-    ranges = np.array(msg.ranges)
-    for i, idx in enumerate(self._indices):
-      # We do not take the minimum range of the cone but the 10-th percentile for robustness.
-      self._measurements[i] = np.percentile(ranges[idx], 10)
-
-  @property
-  def ready(self):
-    return not np.isnan(self._measurements[0])
-
-  @property
-  def measurements(self):
-    return self._measurements
+directory = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, directory)
+try:
+  import obstacle_avoidance
+except ImportError:
+  raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
 
 def run(args):
-  avoidance_method = globals()[args.mode]
+  avoidance_method = getattr(obstacle_avoidance, args.mode)
   name = args.name
   rospy.init_node(name + '_obstacle_avoidance')
 
   # Update control every 100 ms.
   rate_limiter = rospy.Rate(100)
   publisher = rospy.Publisher('/' + name + '/cmd_vel', Twist, queue_size=5)
-  laser = SimpleLaser(name)
+  laser = obstacle_avoidance.SimpleLaser(name)
 
   while not rospy.is_shutdown():
     # Make sure all measurements are ready.

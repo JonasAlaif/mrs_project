@@ -1,5 +1,5 @@
 <launch>
-	<arg name="mode"/>
+	<arg name="mode" default="braitenberg" doc="motion mode to use [braitenberg/rule_based]"/>
 
     <group ns="turtlebot_1">
         <arg name="name" default="turtlebot_1"/>
