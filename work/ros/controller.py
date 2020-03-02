@@ -41,7 +41,7 @@ def run(args):
     # first look for new incoming connections
     try:
       newsock, newaddr = servsocket.accept()
-      clients[newsock] = (None, None, None)
+      clients[newsock] = (None, None, None, None, None)
     except socket.error:
       # we didn't get a new connection
       pass
@@ -51,8 +51,16 @@ def run(args):
     for s in rlist:
       data = s.recv(1024)
       if not len(data) == 0:
-        clients[s] = (data, rospy.Publisher('/' + data + '/cmd_vel', Twist, queue_size=5), obstacle_avoidance.SimpleLaser(data))
-        print("registered socket", s, "with name", data)
+        split = data.split(' ')
+        name = split[0]
+        role = split[1]
+        clients[s] = (name, \
+                      role, \
+                      rospy.Publisher('/' + name + '/cmd_vel', Twist, queue_size=5), \
+                      obstacle_avoidance.SimpleLaser(name), \
+                      obstacle_avoidance.GroundtruthPose('turtlebot3_burger_' + name) \
+                     )
+        print("registered socket", s, "with name", name)
 
     for s in xlist:
       print("removing socket ", s, " with name ", clients[s][0])
@@ -60,7 +68,7 @@ def run(args):
 
     # now update the currently connected robots
     for client in clients.values():
-      (name, pub, laser) = client
+      (name, role, pub, laser, gtpose) = client
       if not laser.ready:
         continue
 
