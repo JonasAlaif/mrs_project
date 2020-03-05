@@ -19,6 +19,7 @@ def run(args):
       pass
   s.send(name + " " + role)
   print("registered name ", name)
+  s.close()
 
 
 if __name__ == '__main__':

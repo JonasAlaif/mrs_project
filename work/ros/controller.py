@@ -7,6 +7,7 @@ from __future__ import print_function
 import argparse
 import numpy as np
 import os
+import random
 import rospy
 import select
 import socket
@@ -70,15 +71,28 @@ def run(args):
     occupancy_grid_base = rrt.OccupancyGrid(occupancy_grid_base, filedata['origin'], filedata['resolution'])
 
 
-
   servsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   servsocket.bind(('', int(args.port)))
   print("listening on port ", int(args.port))
   servsocket.setblocking(False)
   servsocket.listen(5)
 
-  clients = dict()
+  # list of accepted sockets
+  sockets = list()
+
+
+  # these will be dictionaries indexed on the robot name which give you back the 4-tuple
+  # (Publisher, SimpeLaser, GroundtruthPose)
+  police = dict()
+  baddies = dict()
+
+  # this will be a dictionary indexed on the robot name which gives you back the 3-tuple
+  # (path, goal, time_created)
+  # this is used for RRT
   client_path_tuples = dict()
+
+  # the target that the police will chase
+  target = None
 
   # Update controller 20 times a second
   rate_limiter = rospy.Rate(20)
@@ -86,168 +100,201 @@ def run(args):
     # first look for new incoming connections
     try:
       newsock, newaddr = servsocket.accept()
-      clients[newsock] = (None, None, None, None, None)
+      sockets.append(newsock)
+      print('new socket created')
     except socket.error:
       # we didn't get a new connection
       pass
 
-    # check if any sockets are readable or have closed
-    rlist, wlist, xlist = select.select(clients.keys(), [], clients.keys(), 0)
+    # check if any sockets are readable
+    rlist, wlist, xlist = select.select(sockets, [], sockets, 0)
     for s in rlist:
       data = s.recv(1024)
       if not len(data) == 0:
         split = data.split(' ')
         name = split[0]
         role = split[1]
-        clients[s] = (name, \
-                      role, \
-                      rospy.Publisher('/' + name + '/cmd_vel', Twist, queue_size=5), \
-                      obstacle_avoidance.SimpleLaser(name), \
-                      obstacle_avoidance.GroundtruthPose('turtlebot3_burger_' + name) \
-                     )
+        temp = (rospy.Publisher('/' + name + '/cmd_vel', Twist, queue_size=5),
+                         obstacle_avoidance.SimpleLaser(name),
+                         obstacle_avoidance.GroundtruthPose('turtlebot3_burger_' + name)
+                        )
+        if role == 'police':
+          police[name] = temp
+        else:
+          baddies[name] = temp
 
         # used for rrt
         time_now = float(rospy.Time.now().to_sec())
-        client_path_tuples[s] = (None,
-                                 rrt.sample_random_position(occupancy_grid_base),
-                                 time_now)
-        print("registered socket", s, "with name", name)
-
-    for s in xlist:
-      print("removing socket ", s, " with name ", clients[s][0])
-      del clients[s]
+        client_path_tuples[name] = (None,
+                                    rrt.sample_random_position(occupancy_grid_base),
+                                    time_now)
+        print("registered robot", name, "with role", role)
 
     # create an occupancy grid containing the original grid and the robots (to avoid collisions)
     # this is currently unused
     occupancy_grid = rrt.OccupancyGrid(occupancy_grid_base.values,
                                        np.append(occupancy_grid_base.origin, 0),
                                        occupancy_grid_base.resolution)
-    for sock in clients.keys():
-      centre = clients[sock][4].pose[:2]
+    for name in police.keys():
+      # get the location of the bot
+      centre = police[name][2].pose[:2]
+      centre_indexes = occupancy_grid.get_index(centre)
+      for i in range(-1, 1):
+        for j in range(-1, 1):
+          occupancy_grid.values[centre_indexes[0] + i][centre_indexes[1] + j] = rrt.OCCUPIED
+    for name in baddies.keys():
+      # get the location of the bot
+      centre = baddies[name][2].pose[:2]
       centre_indexes = occupancy_grid.get_index(centre)
       for i in range(-1, 1):
         for j in range(-1, 1):
           occupancy_grid.values[centre_indexes[0] + i][centre_indexes[1] + j] = rrt.OCCUPIED
 
-    # split the bots into goodies and baddies
-    police = []
-    baddies = []
-    for client in clients.keys():
-      if clients[client][1] == 'baddie':
-        baddies.append(client)
-      elif clients[client][1] == 'police':
-        police.append(client)
-
     # check if any police have caught any baddies
     caught_baddies = []
-    for polbot in  police:
-      for badbot in baddies:
-        dist_from_baddie = np.linalg.norm(clients[polbot][4].pose[:2] - clients[badbot][4].pose[:2])
+    for polname in police.keys():
+      for badname in baddies.keys():
+        dist_from_baddie = np.linalg.norm(police[polname][2].pose[:2] - baddies[badname][2].pose[:2])
         if dist_from_baddie < 0.3:
-          print(clients[polbot][0], "caught baddie", clients[badbot][0], "!!!!!!!!!!!!!!!!")
+          print(polname, "caught baddie", badname, "!!!!!!!!!!!!!!!!")
 
           # stop this baddie
           vel_msg = Twist()
           vel_msg.linear.x = 0
           vel_msg.angular.z = 0
-          clients[badbot][2].publish(vel_msg)
+          baddies[badname][0].publish(vel_msg)
 
           # mark this baddie as caught
-          caught_baddies.append(badbot)
+          caught_baddies.append(badname)
 
-    # remove baddies
-    # remove this baddie from the list of clients
-    for badbot in caught_baddies:
-      name = clients[badbot][0]
-      del clients[badbot]
-      del client_path_tuples[badbot]
+    # remove baddies that were caught
+    for badname in caught_baddies:
+      del baddies[badname]
+      del client_path_tuples[badname]
+      if badname == target:
+        target = None
 
       # for now, also delete the baddie model
-      rospy.ServiceProxy('gazebo/delete_model', DeleteModel)('turtlebot3_burger_' + name)
+      rospy.ServiceProxy('gazebo/delete_model', DeleteModel)('turtlebot3_burger_' + badname)
 
-    # pick a baddie for all the police to chase
-    baddie = None
-    for sock in clients.keys():
-      if clients[sock][1] == "baddie":
-        baddie = sock
-
+    # pick a baddie for all the police to chase if there isn't already one
+    if len(baddies.keys()) > 0 and target == None:
+      for name in random.sample(baddies.keys(), len(baddies.keys())):
+        # TODO change baddie selection policy (closest/furthest/something else?)
+        if baddies[name][2].ready:
+          target = name
+          break
+      else:
+        target = None
 
     # now update the currently connected robots
-    for sock in clients.keys():
-      (name, role, pub, laser, gtpose) = clients[sock]
-      #if not laser.ready:
-      #  continue
-      (path, goal, time_created) = client_path_tuples[sock]
+    for name in police.keys():
+      (pub, laser, gtpose) = police[name]
+      (path, goal, time_created) = client_path_tuples[name]
 
-      # check if the goal has been reached
-      goal_reached = np.linalg.norm(gtpose.pose[:2] - goal) < .2
+      # get current time (for updating path)
       time_now = rospy.Time.now().to_sec()
+      # check if current goal has been reached
+      if gtpose.ready:
+        goal_reached = np.linalg.norm(gtpose.pose[:2] - goal) < 0.2
+      else:
+        goal_reached = None
 
       baddie_dist_from_goal = None
-      if baddie is not None and role == 'police':
-        baddie_dist_from_goal = np.linalg.norm(goal - clients[baddie][4].pose[:2])
-        print("baddie dist:", baddie_dist_from_goal)
+      if target is not None:
+        baddie_dist_from_goal = np.linalg.norm(baddies[target][2].pose[:2] - goal)
 
-      # if the robot has reached the goal or there was no path
-      if goal_reached or path is None or len(path) == 0 or (role == 'police' and baddie_dist_from_goal > 0.30):
-        if baddie_dist_from_goal > 0.3:
-          print("baddie moved")
-        if gtpose.ready:
-          new_goal = None
-          if baddie is not None and role == 'police':
-            # choose the baddie's location as the goal
-            new_goal = np.array(clients[baddie][4].pose[:2])
-          else:
-            # choose a new random goal and get a new path
-            new_goal = rrt.sample_random_position(occupancy_grid)
-
-          print("goal:", new_goal)
-          start_node, end_node = rrt.rrt(gtpose.pose, new_goal, occupancy_grid_base, MAX_ITERATIONS)
-          #print("start node:", start_node, "end node:", end_node)
-          new_path = rrt_navigation.get_path(end_node)
-          path = new_path
-          client_path_tuples[sock] = (new_path, new_goal, time_now)
-          print(name, "reached goal, giving it the new goal:", new_goal)
+      # generate a new goal if needed
+      new_goal = None
+      if goal_reached or path is None or len(path) == 0:
+        # generate a new goal
+        if target is not None:
+          new_goal = list(baddies[target][2].pose[:2])
+          goal = new_goal
+          print('new target goal:', new_goal)
         else:
-          print("ground truth not ready")
-          continue
-      # update the path every 10 seconds
-      elif time_now - time_created > 10:
-        start_node, end_node = rrt.rrt(gtpose.pose, goal, occupancy_grid, MAX_ITERATIONS)
-        new_path = rrt_navigation.get_path(end_node)
-        path = new_path
-        client_path_tuples[sock] = (new_path, goal, time_now)
-        #print("updating the path for", name)
+          new_goal = rrt.sample_random_position(occupancy_grid)
+          goal = new_goal
+          print('new random goal:', new_goal)
+
+      elif baddie_dist_from_goal > 0.3:
+        # the baddie moved away from the goal. generate a new goal to follow them
+        print('baddie moved')
+        print('dist: ', baddie_dist_from_goal)
+        new_goal = list(baddies[target][2].pose[:2])
+        goal = new_goal
+        print('new target goal:', new_goal)
+
+      # if we selected a new goal or it's been a while since we last calculated a path, update our path
+      if new_goal is not None or (time_now - time_created > 10 and goal is not None):
+        if gtpose.ready:
+          start_node, end_node = rrt.rrt(gtpose.pose, goal, occupancy_grid_base, MAX_ITERATIONS)
+          new_path = rrt_navigation.get_path(end_node)
+          client_path_tuples[name] = (new_path, goal, time_now)
+          path = new_path
+          print('path updated for', name)
+        else:
+          print('ground truth not ready for goal setting')
 
 
+      if path is not None and gtpose.ready:
+        lin_pos = np.array([gtpose.pose[X] + EPSILON*np.cos(gtpose.pose[YAW]),\
+                            gtpose.pose[Y] + EPSILON*np.sin(gtpose.pose[YAW])])
 
-      #print("gtpose: ", gtpose.pose)
-      lin_pos = np.array([gtpose.pose[X] + EPSILON*np.cos(gtpose.pose[YAW]),\
-                          gtpose.pose[Y] + EPSILON*np.sin(gtpose.pose[YAW])])
-      #print("path: ", path)
-      #v = rrt_navigation.get_velocity(lin_pos, np.array(path, dtype=np.float32))
-      if role == 'police':
         v = rrt_navigation.get_velocity(lin_pos, np.array(path, dtype=np.float32), speed=SPEED*2)
-      else:
-        v = rrt_navigation.get_velocity(lin_pos, np.array(path, dtype=np.float32), speed=SPEED)
-      #print("vel: ", v)
-      #u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, SPEED)
-      if role == 'police':
         u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED*2)
+
+        vel_msg = Twist()
+        vel_msg.linear.x = u
+        vel_msg.angular.z = w
+        pub.publish(vel_msg)
+
+    for name in baddies.keys():
+      (pub, laser, gtpose) = baddies[name]
+      (path, goal, time_created) = client_path_tuples[name]
+
+      # get curret time (for updating path)
+      time_now = rospy.Time.now().to_sec()
+      # check if current goal has been reached
+      if gtpose.ready:
+        goal_reached = np.linalg.norm(gtpose.pose[:2] - goal) < 0.2
       else:
+        goal_reached = None
+
+      # generate a new goal if needed
+      new_goal = None
+      if goal_reached or path is None or len(path) == 0:
+        # generate a new random goal
+        new_goal = rrt.sample_random_position(occupancy_grid)
+        goal = new_goal
+
+      # if we selected a new goal or it's been a while since we last calculated a path, update our path
+      if new_goal is not None or (time_now - time_created > 10 and goal is not None):
+        if gtpose.ready:
+          start_node, end_node = rrt.rrt(gtpose.pose, goal, occupancy_grid_base, MAX_ITERATIONS)
+          new_path = rrt_navigation.get_path(end_node)
+          client_path_tuples[name] = (new_path, goal, time_now)
+          path = new_path
+          print('path updated for', name)
+        else:
+          print('ground truth not ready for goal setting')
+
+      if path is not None:
+        lin_pos = np.array([gtpose.pose[X] + EPSILON*np.cos(gtpose.pose[YAW]),\
+                            gtpose.pose[Y] + EPSILON*np.sin(gtpose.pose[YAW])])
+
+        v = rrt_navigation.get_velocity(lin_pos, np.array(path, dtype=np.float32), speed=SPEED)
         u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
 
+        vel_msg = Twist()
+        vel_msg.linear.x = u
+        vel_msg.angular.z = w
+        pub.publish(vel_msg)
 
-
-
-      #u, w = avoidance_method(*laser.measurements)
-      vel_msg = Twist()
-      vel_msg.linear.x = u
-      vel_msg.angular.z = w
-      pub.publish(vel_msg)
 
     # sleep so we don't overutilise the CPU
     rate_limiter.sleep()
+    #time.sleep(0.05)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Controls the robots')
