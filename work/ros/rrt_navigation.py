@@ -41,7 +41,7 @@ Y = 1
 YAW = 2
 
 
-def feedback_linearized(pose, velocity, epsilon):
+def feedback_linearized(pose, velocity, epsilon, speed):
   u = 0.  # [m/s]
   w = 0.  # [rad/s] going counter-clockwise.
   if np.linalg.norm(velocity) < 1e-2:
@@ -53,12 +53,12 @@ def feedback_linearized(pose, velocity, epsilon):
   # Calculate robot controls as given by feedback linearization equations
   d_x_p = velocity[X] + epsilon*(-d_rot_vel*np.sin(pose[YAW]))
   d_y_p = velocity[Y] + epsilon*(d_rot_vel*np.cos(pose[YAW]))
-  u = np.clip(d_x_p*np.cos(pose[YAW]) + d_y_p*np.sin(pose[YAW]), -SPEED*0.1, SPEED)
+  u = np.clip(d_x_p*np.cos(pose[YAW]) + d_y_p*np.sin(pose[YAW]), -speed*0.1, speed)
   w = np.clip(-d_x_p*np.sin(pose[YAW]) + d_y_p*np.cos(pose[YAW]) / epsilon, -.5, .5)
   return u, w
   
 
-def get_velocity(position, path_points):
+def get_velocity(position, path_points, speed):
   v = np.zeros_like(position)
   path_len = len(path_points)
   if path_len == 0:
@@ -75,7 +75,7 @@ def get_velocity(position, path_points):
     to_i = path_points[min(path_len - 1, closest_point_on_path + i)] - position
     v += to_i / np.linalg.norm(to_i)
   # Average the direction over the next 4 points
-  v = SPEED * v / average_points
+  v = speed * v / average_points
   return v
 
 
@@ -233,8 +233,8 @@ def run(args):
     position = np.array([
         slam.pose[X] + EPSILON * np.cos(slam.pose[YAW]),
         slam.pose[Y] + EPSILON * np.sin(slam.pose[YAW])], dtype=np.float32)
-    v = get_velocity(position, np.array(current_path, dtype=np.float32))
-    u, w = feedback_linearized(slam.pose, v, epsilon=EPSILON)
+    v = get_velocity(position, np.array(current_path, dtype=np.float32), speed=SPEED)
+    u, w = feedback_linearized(slam.pose, v, epsilon=EPSILON, speed=SPEED)
     vel_msg = Twist()
     vel_msg.linear.x = u
     vel_msg.angular.z = w

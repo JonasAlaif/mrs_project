@@ -113,14 +113,16 @@ class SimpleLaser(object):
 
 class GroundtruthPose(object):
   def __init__(self, name='turtlebot3_burger'):
-    rospy.Subscriber('/gazebo/model_states', ModelStates, self.callback)
+    self._subscriber = rospy.Subscriber('/gazebo/model_states', ModelStates, self.callback)
     self._pose = np.array([np.nan, np.nan, np.nan], dtype=np.float32)
     self._name = name
 
   def callback(self, msg):
     idx = [i for i, n in enumerate(msg.name) if n == self._name]
     if not idx:
-      raise ValueError('Specified name "{}" does not exist.'.format(self._name))
+      self._subscriber.unregister()
+      #raise ValueError('Specified name "{}" does not exist.'.format(self._name))
+      print('Specified name "{}" does not exist.'.format(self._name), file=sys.stderr)
     idx = idx[0]
     self._pose[0] = msg.pose[idx].position.x
     self._pose[1] = msg.pose[idx].position.y
