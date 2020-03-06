@@ -71,7 +71,7 @@ def sample_position(position, occupancy_grid):
     for y in range(-cell_count + 1, cell_count):
       return_sum += occupancy_grid.values[og_position[X] + x, og_position[Y] + y]
   return return_sum
-  
+
 
 # Defines an occupancy grid.
 class OccupancyGrid(object):
@@ -163,7 +163,7 @@ class Node(object):
   @property
   def yaw(self):
     return self._pose[YAW]
-  
+
   @property
   def direction(self):
     return np.array([np.cos(self._pose[YAW]), np.sin(self._pose[YAW])], dtype=np.float32)
@@ -177,7 +177,7 @@ class Node(object):
     self._cost = c
 
 
-def rrt(start_pose, goal_position, occupancy_grid):
+def rrt(start_pose, goal_position, occupancy_grid, num_iterations=MAX_ITERATIONS):
   # RRT builds a graph one node at a time.
   graph = []
   start_node = Node(start_pose)
@@ -186,7 +186,7 @@ def rrt(start_pose, goal_position, occupancy_grid):
     print('Goal position is not in the free space.')
     return start_node, None
   graph.append(start_node)
-  for _ in range(MAX_ITERATIONS): 
+  for _ in range(num_iterations):
     # With a random chance, draw the goal position.
     if np.random.rand() < .05:
       position = goal_position
@@ -344,11 +344,11 @@ if __name__ == '__main__':
   draw_solution(start_node, final_node)
   plt.scatter(START_POSE[0], START_POSE[1], s=10, marker='o', color='green', zorder=1000)
   plt.scatter(GOAL_POSITION[0], GOAL_POSITION[1], s=10, marker='o', color='red', zorder=1000)
-  
+
   plt.axis('equal')
   plt.xlabel('x')
   plt.ylabel('y')
   plt.xlim([-.5 - 2., 2. + .5])
   plt.ylim([-.5 - 2., 2. + .5])
   plt.show()
-  
+

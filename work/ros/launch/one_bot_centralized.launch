@@ -2,6 +2,7 @@
 
   <!-- Note: name MUST be unique for each different instance of this -->
   <arg name="name" default="turtlebot_0"/>
+  <arg name="role" default="police" doc="role [baddie, police]"/>
   <arg name="model" default="burger" doc="model type [burger, waffle, waffle_pi]"/>
   <arg name="x_pos" default="-1.0"/>
   <arg name="y_pos" default="-1.0"/>
@@ -15,6 +16,6 @@
     <arg name="z_pos" value="$(arg z_pos)"/>
   </include>
 
-  <node pkg="mrs_project" type="register_client.py" name="$(arg name)_register" args="--name=$(arg name)" output="screen"></node>
+  <node pkg="mrs_project" type="register_client.py" name="$(arg name)_register" args="--name=$(arg name) --role=$(arg role)" output="screen"></node>
 
 </launch>

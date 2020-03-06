@@ -1,6 +1,6 @@
 <launch>
   <arg name="model" default="burger" doc="model type [burger, waffle, waffle_pi]"/>
-  <arg name="mode" default="individual" doc="control type [individual, centralized]"/>
+  <arg name="mode" default="centralized" doc="control type [individual, centralized]"/>
 
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find mrs_project)/work/ros/worlds/city.world"/>
@@ -15,6 +15,7 @@
     <include file="$(find mrs_project)/work/ros/launch/one_bot_$(arg mode).launch">
       <arg name="model" value="$(arg model)"/>
       <arg name="name" value="turtlebot_1"/>
+      <arg name="role" value="police"/>
       <arg name="x_pos" value="-1.0"/>
       <arg name="y_pos" value="-1.0"/>
       <arg name="z_pos" value="0.0"/>
@@ -25,7 +26,19 @@
     <include file="$(find mrs_project)/work/ros/launch/one_bot_$(arg mode).launch">
       <arg name="model" value="$(arg model)"/>
       <arg name="name" value="turtlebot_2"/>
+      <arg name="role" value="baddie"/>
       <arg name="x_pos" value="1.0"/>
+      <arg name="y_pos" value="1.0"/>
+      <arg name="z_pos" value="0.0"/>
+    </include>
+  </group>
+
+  <group ns="turtlebot_3">
+    <include file="$(find mrs_project)/work/ros/launch/one_bot_$(arg mode).launch">
+      <arg name="model" value="$(arg model)"/>
+      <arg name="name" value="turtlebot_3"/>
+      <arg name="role" value="baddie"/>
+      <arg name="x_pos" value="-1.0"/>
       <arg name="y_pos" value="1.0"/>
       <arg name="z_pos" value="0.0"/>
     </include>

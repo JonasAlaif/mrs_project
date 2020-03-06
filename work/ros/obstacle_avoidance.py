@@ -7,6 +7,7 @@ from __future__ import print_function
 import argparse
 import numpy as np
 import rospy
+import sys
 
 # Robot motion commands:
 # http://docs.ros.org/api/geometry_msgs/html/msg/Twist.html
@@ -113,23 +114,26 @@ class SimpleLaser(object):
 
 class GroundtruthPose(object):
   def __init__(self, name='turtlebot3_burger'):
-    rospy.Subscriber('/gazebo/model_states', ModelStates, self.callback)
+    self._subscriber = rospy.Subscriber('/gazebo/model_states', ModelStates, self.callback)
     self._pose = np.array([np.nan, np.nan, np.nan], dtype=np.float32)
     self._name = name
 
   def callback(self, msg):
     idx = [i for i, n in enumerate(msg.name) if n == self._name]
     if not idx:
-      raise ValueError('Specified name "{}" does not exist.'.format(self._name))
-    idx = idx[0]
-    self._pose[0] = msg.pose[idx].position.x
-    self._pose[1] = msg.pose[idx].position.y
-    _, _, yaw = euler_from_quaternion([
-        msg.pose[idx].orientation.x,
-        msg.pose[idx].orientation.y,
-        msg.pose[idx].orientation.z,
-        msg.pose[idx].orientation.w])
-    self._pose[2] = yaw
+      self._subscriber.unregister()
+      #raise ValueError('Specified name "{}" does not exist.'.format(self._name))
+      print('Specified name "{}" does not exist.'.format(self._name), file=sys.stderr)
+    else:
+      idx = idx[0]
+      self._pose[0] = msg.pose[idx].position.x
+      self._pose[1] = msg.pose[idx].position.y
+      _, _, yaw = euler_from_quaternion([
+          msg.pose[idx].orientation.x,
+          msg.pose[idx].orientation.y,
+          msg.pose[idx].orientation.z,
+          msg.pose[idx].orientation.w])
+      self._pose[2] = yaw
 
   @property
   def ready(self):
