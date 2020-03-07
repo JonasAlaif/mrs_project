@@ -45,7 +45,7 @@ YAW = 2
 
 SPEED = 0.1
 
-def navigate_baddie(name, laser, gtpose, paths, occupancy_grid, max_iterations):
+def navigate_police(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_iterations):
   (path, goal, time_created) = paths[name]
 
   # get curret time (for updating path)
@@ -56,12 +56,32 @@ def navigate_baddie(name, laser, gtpose, paths, occupancy_grid, max_iterations):
   else:
     goal_reached = None
 
+  baddie_dist_from_goal = None
+  if baddie_gtp is not None and baddie_gtp.ready:
+    baddie_dist_from_goal = np.linalg.norm(baddie_gtp.pose[:2] - goal)
+
   # generate a new goal if needed
   new_goal = None
   if goal_reached or path is None or len(path) == 0:
-    # generate a new random goal
-    new_goal = rrt.sample_random_position(occupancy_grid)
+    # generate a new goal
+    if baddie_gtp is not None and baddie_gtp.ready:
+      # put the goal where the baddie is
+      new_goal = list(baddie_gtp.pose[:2])
+      goal = new_goal
+      print('new target goal:', new_goal)
+    else:
+      # generate a random goal
+      new_goal = rrt.sample_random_position(occupancy_grid)
+      goal = new_goal
+      print('new random goal:', new_goal)
+
+  elif baddie_dist_from_goal > 0.3:
+    # the baddie moved away from the goal. generate a new goal to follow them
+    print('baddie moved')
+    print('dist: ', baddie_dist_from_goal)
+    new_goal = list(baddie_gtp.pose[:2])
     goal = new_goal
+    print('new target goal:', new_goal)
 
   # if we selected a new goal or it's been a while since we last calculated a path, update our path
   if new_goal is not None or (time_now - time_created > 10 and goal is not None):
