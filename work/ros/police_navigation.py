@@ -45,6 +45,23 @@ YAW = 2
 
 SPEED = 0.1
 
+'''
+TODO upgrade this documentation if the description of this function changes
+navigate_police takes a series of arguments and gives you back the straight-line and angular velocities
+that you should pass to the robot in order to follow the path.
+This function sets the given baddie_gtp as the goal position if it is not None.
+If it is None, then it picks a random location
+
+Arguments:
+    name - the name of the robot being navigated
+    gtpose - the GroundtruthPose of the robot being navigated
+    laser - the SimpleLaser of the robot being navigated
+    baddie_gtp - the GroundtruthPose of the baddie being tracked
+    paths - the dictionary of (path, goal, time_created) tuples of all objects
+            only the value of paths[name] is used and updated in this function
+    occupancy_grid - the occupancy grid of the map
+    max_iterations - the maximum number of times the rrt function should iterate
+'''
 def navigate_police(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_iterations):
   (path, goal, time_created) = paths[name]
 

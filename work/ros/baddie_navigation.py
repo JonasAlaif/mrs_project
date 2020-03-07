@@ -45,6 +45,21 @@ YAW = 2
 
 SPEED = 0.1
 
+'''
+TODO upgrade this documentation if the description of this function changes
+navigate_baddie takes a series of arguments and gives you back the straight-line and angular velocities
+that you should pass to the robot in order to follow the path.
+This function will select a random goal for the baddie each time it reaches its current goal.
+
+Arguments:
+    name - the name of the robot being navigated
+    gtpose - the GroundtruthPose of the robot being navigated
+    laser - the SimpleLaser of the robot being navigated
+    paths - the dictionary of (path, goal, time_created) tuples of all objects
+            only the value of paths[name] is used and updated in this function
+    occupancy_grid - the occupancy grid of the map
+    max_iterations - the maximum number of times the rrt function should iterate
+'''
 def navigate_baddie(name, laser, gtpose, paths, occupancy_grid, max_iterations):
   (path, goal, time_created) = paths[name]
 
