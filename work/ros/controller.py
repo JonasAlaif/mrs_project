@@ -27,6 +27,8 @@ sys.path.insert(0, directory)
 try:
   import obstacle_avoidance
   import rrt_navigation
+  import baddie_navigation
+  import police_navigation
 except ImportError:
   raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
 
@@ -187,105 +189,38 @@ def run(args):
       else:
         target = None
 
-    # now update the currently connected robots
+    # update police navigation
     for name in police.keys():
       (pub, laser, gtpose) = police[name]
       (path, goal, time_created) = client_path_tuples[name]
 
-      # get current time (for updating path)
-      time_now = rospy.Time.now().to_sec()
-      # check if current goal has been reached
-      if gtpose.ready:
-        goal_reached = np.linalg.norm(gtpose.pose[:2] - goal) < 0.2
-      else:
-        goal_reached = None
-
-      baddie_dist_from_goal = None
-      if target is not None:
-        baddie_dist_from_goal = np.linalg.norm(baddies[target][2].pose[:2] - goal)
-
-      # generate a new goal if needed
-      new_goal = None
-      if goal_reached or path is None or len(path) == 0:
-        # generate a new goal
-        if target is not None:
-          new_goal = list(baddies[target][2].pose[:2])
-          goal = new_goal
-          print('new target goal:', new_goal)
-        else:
-          new_goal = rrt.sample_random_position(occupancy_grid)
-          goal = new_goal
-          print('new random goal:', new_goal)
-
-      elif baddie_dist_from_goal > 0.3:
-        # the baddie moved away from the goal. generate a new goal to follow them
-        print('baddie moved')
-        print('dist: ', baddie_dist_from_goal)
-        new_goal = list(baddies[target][2].pose[:2])
-        goal = new_goal
-        print('new target goal:', new_goal)
-
-      # if we selected a new goal or it's been a while since we last calculated a path, update our path
-      if new_goal is not None or (time_now - time_created > 10 and goal is not None):
-        if gtpose.ready:
-          start_node, end_node = rrt.rrt(gtpose.pose, goal, occupancy_grid_base, MAX_ITERATIONS)
-          new_path = rrt_navigation.get_path(end_node)
-          client_path_tuples[name] = (new_path, goal, time_now)
-          path = new_path
-          print('path updated for', name)
-        else:
-          print('ground truth not ready for goal setting')
-
-
-      if path is not None and gtpose.ready:
-        lin_pos = np.array([gtpose.pose[X] + EPSILON*np.cos(gtpose.pose[YAW]),\
-                            gtpose.pose[Y] + EPSILON*np.sin(gtpose.pose[YAW])])
-
-        v = rrt_navigation.get_velocity(lin_pos, np.array(path, dtype=np.float32), speed=SPEED*2)
-        u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED*2)
-
+      baddie_gtpose = baddies[target][2] if target is not None else None
+      u, w = police_navigation.navigate_police(name,
+                                               gtpose,
+                                               laser,
+                                               baddie_gtpose,
+                                               client_path_tuples,
+                                               occupancy_grid_base,
+                                               MAX_ITERATIONS)
+      if u is not None and w is not None:
         vel_msg = Twist()
         vel_msg.linear.x = u
         vel_msg.angular.z = w
         pub.publish(vel_msg)
 
+    # update baddie navigation
     for name in baddies.keys():
       (pub, laser, gtpose) = baddies[name]
       (path, goal, time_created) = client_path_tuples[name]
 
-      # get curret time (for updating path)
-      time_now = rospy.Time.now().to_sec()
-      # check if current goal has been reached
-      if gtpose.ready:
-        goal_reached = np.linalg.norm(gtpose.pose[:2] - goal) < 0.2
-      else:
-        goal_reached = None
+      u, w = baddie_navigation.navigate_baddie(name,
+                                               laser,
+                                               gtpose,
+                                               client_path_tuples,
+                                               occupancy_grid,
+                                               MAX_ITERATIONS)
 
-      # generate a new goal if needed
-      new_goal = None
-      if goal_reached or path is None or len(path) == 0:
-        # generate a new random goal
-        new_goal = rrt.sample_random_position(occupancy_grid)
-        goal = new_goal
-
-      # if we selected a new goal or it's been a while since we last calculated a path, update our path
-      if new_goal is not None or (time_now - time_created > 10 and goal is not None):
-        if gtpose.ready:
-          start_node, end_node = rrt.rrt(gtpose.pose, goal, occupancy_grid_base, MAX_ITERATIONS)
-          new_path = rrt_navigation.get_path(end_node)
-          client_path_tuples[name] = (new_path, goal, time_now)
-          path = new_path
-          print('path updated for', name)
-        else:
-          print('ground truth not ready for goal setting')
-
-      if path is not None:
-        lin_pos = np.array([gtpose.pose[X] + EPSILON*np.cos(gtpose.pose[YAW]),\
-                            gtpose.pose[Y] + EPSILON*np.sin(gtpose.pose[YAW])])
-
-        v = rrt_navigation.get_velocity(lin_pos, np.array(path, dtype=np.float32), speed=SPEED)
-        u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
-
+      if u is not None and w is not None:
         vel_msg = Twist()
         vel_msg.linear.x = u
         vel_msg.angular.z = w
@@ -294,7 +229,6 @@ def run(args):
 
     # sleep so we don't overutilise the CPU
     rate_limiter.sleep()
-    #time.sleep(0.05)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Controls the robots')
