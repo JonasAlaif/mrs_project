@@ -19,7 +19,7 @@ YAW = 2
 WALL_OFFSET = 5.
 GOAL_POSITION = np.array([3, 3], dtype=np.float32)
 START_POSITION = np.array([-1, -3], dtype=np.float32)
-MAX_SPEED = .5
+MAX_SPEED = 2.
 
 def sigmoid(x):
   return np.tanh(x)
@@ -40,7 +40,7 @@ def get_velocity_to_reach_goal(position, goal_position):
 
 def get_velocity_to_avoid_obstacles(position, obstacle_map):
   v = np.zeros(2, dtype=np.float32)
-  v = 10 * MAX_SPEED * obstacle_map.get_gradient(position)
+  v = 15 * MAX_SPEED * obstacle_map.get_gradient(position)
   return v
 
 
@@ -58,9 +58,9 @@ def cap(v, max_speed):
   return v
 
 
-def get_velocity(position, obstacle_map, mode='all'):
+def get_velocity(position, goal_position, obstacle_map, mode='all'):
   if mode in ('goal', 'all'):
-    v_goal = get_velocity_to_reach_goal(position, GOAL_POSITION)
+    v_goal = get_velocity_to_reach_goal(position, goal_position)
   else:
     v_goal = np.zeros(2, dtype=np.float32)
   if mode in ('obstacle', 'all'):
@@ -159,22 +159,26 @@ def read_pgm(filename, byteorder='>'):
   return img.astype(np.float32) / 255.
 
 
+def initialize(map_file):
+  # Load map.
+  with open(map_file + '.yaml') as fp:
+    data = yaml.load(fp)
+  img = read_pgm(os.path.join(os.path.dirname(map_file), data['image']))
+  return ObstacleMap(img, data['origin'], data['resolution'])
+
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Runs obstacle avoidance with a potential field')
   parser.add_argument('--mode', action='store', default='all', help='Which velocity field to plot.', choices=['obstacle', 'goal', 'all'])
   parser.add_argument('--map', action='store', default='map_city', help='Which map to use.')
   args, unknown = parser.parse_known_args()
 
-  # Load map.
-  with open(args.map + '.yaml') as fp:
-    data = yaml.load(fp)
-  img = read_pgm(os.path.join(os.path.dirname(args.map), data['image']))
-  obstacle_map = ObstacleMap(img, data['origin'], data['resolution'])
+  obstacle_map = initialize(args.map)
 
   # Plot environment.
   fig, ax = plt.subplots()
-  obstacle_map.draw()
-  #obstacle_map.draw_avoidance()
+  #obstacle_map.draw()
+  obstacle_map.draw_avoidance()
   
   plt.scatter(START_POSITION[X], START_POSITION[Y], s=10, marker='o', color='green', zorder=1000)
   plt.scatter(GOAL_POSITION[X], GOAL_POSITION[Y], s=10, marker='o', color='red', zorder=1000)
@@ -186,7 +190,7 @@ if __name__ == '__main__':
   V = np.zeros_like(Xs)
   for i in range(len(Xs)):
     for j in range(len(Xs[0])):
-      velocity = get_velocity(np.array([Xs[i, j], Ys[i, j]]), obstacle_map, args.mode)
+      velocity = get_velocity(np.array([Xs[i, j], Ys[i, j]]), GOAL_POSITION, obstacle_map, args.mode)
       U[i, j] = velocity[0]
       V[i, j] = velocity[1]
   plt.quiver(Xs, Ys, U, V, units='width')
@@ -197,7 +201,7 @@ if __name__ == '__main__':
   x = START_POSITION
   positions = [x]
   for t in np.arange(0., 40., dt):
-    v = get_velocity(x, obstacle_map, args.mode)
+    v = get_velocity(x, GOAL_POSITION, obstacle_map, args.mode)
     x = x + v * dt
     positions.append(x)
   positions = np.array(positions)

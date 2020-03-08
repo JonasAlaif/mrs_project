@@ -54,6 +54,7 @@ YAW = 2
 SPEED = 0.1
 
 def run(args):
+  police_navigation.initialize()
   avoidance_method = getattr(obstacle_avoidance, args.mode)
   rospy.init_node('controller')
   occupancy_grid_base = None
@@ -195,7 +196,7 @@ def run(args):
       (path, goal, time_created) = client_path_tuples[name]
 
       baddie_gtpose = baddies[target][2] if target is not None else None
-      u, w = police_navigation.navigate_police(name,
+      u, w = police_navigation.navigate_police_2(name,
                                                gtpose,
                                                laser,
                                                baddie_gtpose,

@@ -21,7 +21,7 @@ from tf.transformations import euler_from_quaternion
 directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../python')
 sys.path.insert(0, directory)
 try:
-  import potential_field
+  import potential_field_map
 except ImportError:
   raise ImportError('Unable to import potential_field.py. Make sure this file is in "{}"'.format(directory))
 

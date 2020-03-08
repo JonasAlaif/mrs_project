@@ -33,6 +33,7 @@ directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../python
 sys.path.insert(0, directory)
 try:
   import rrt
+  import potential_field_map
 except ImportError:
   raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
 
@@ -44,6 +45,13 @@ Y = 1
 YAW = 2
 
 SPEED = 0.1
+
+obstacle_map = None
+
+def initialize():
+  global obstacle_map
+  obstacle_map = potential_field_map.initialize('/home/jonas/catkin_ws/src/mrs_project/work/python/map_city')
+
 
 '''
 TODO upgrade this documentation if the description of this function changes
@@ -121,3 +129,13 @@ def navigate_police(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_
     return u, w
   else:
     return None, None
+
+
+
+def navigate_police_2(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_iterations):
+  if baddie_gtp == None:
+    return 0, 0
+  global obstacle_map
+  v = potential_field_map.get_velocity(gtpose.pose[:2], baddie_gtp.pose[:2], obstacle_map)
+  u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
+  return u, w
