@@ -194,6 +194,9 @@ def run(args):
     for name in police.keys():
       (pub, laser, gtpose) = police[name]
       (path, goal, time_created) = client_path_tuples[name]
+      other_police = dict(police)
+      del other_police[name]
+      other_police_pos = [pol[2].pose[:2] for pol in other_police.values()]
 
       baddie_gtpose = baddies[target][2] if target is not None else None
       u, w = police_navigation.navigate_police_2(name,
@@ -202,7 +205,7 @@ def run(args):
                                                baddie_gtpose,
                                                client_path_tuples,
                                                occupancy_grid_base,
-                                               MAX_ITERATIONS)
+                                               MAX_ITERATIONS, other_police_pos)
       if u is not None and w is not None:
         vel_msg = Twist()
         vel_msg.linear.x = u
@@ -229,7 +232,7 @@ def run(args):
 
 
     # sleep so we don't overutilise the CPU
-    rate_limiter.sleep()
+    #rate_limiter.sleep()
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Controls the robots')

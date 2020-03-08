@@ -70,7 +70,7 @@ Arguments:
     occupancy_grid - the occupancy grid of the map
     max_iterations - the maximum number of times the rrt function should iterate
 '''
-def navigate_police(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_iterations):
+def navigate_police(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_iterations, other_police):
   (path, goal, time_created) = paths[name]
 
   # get curret time (for updating path)
@@ -132,10 +132,11 @@ def navigate_police(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_
 
 
 
-def navigate_police_2(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_iterations):
+def navigate_police_2(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_iterations, other_police):
   if baddie_gtp == None:
     return 0, 0
   global obstacle_map
-  v = potential_field_map.get_velocity(gtpose.pose[:2], baddie_gtp.pose[:2], obstacle_map)
+  control_pos = gtpose.pose[:2] + np.array([EPSILON*np.cos(gtpose.pose[YAW]), EPSILON*np.sin(gtpose.pose[YAW])]) / 2
+  v = potential_field_map.get_velocity(control_pos, baddie_gtp.pose[:2], other_police, obstacle_map)
   u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
   return u, w

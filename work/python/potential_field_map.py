@@ -37,10 +37,21 @@ def get_velocity_to_reach_goal(position, goal_position):
   #v = 2./3. * v + 1./3. * v * perlin
   return v
 
+def get_velocity_to_avoid_positions(position, other_positions):
+  v = np.zeros(2, dtype=np.float32)
+  for other_pos in other_positions:
+    from_other = position - other_pos
+    from_other_magnitude = np.linalg.norm(from_other)
+    if from_other_magnitude < 1e-3:
+      continue
+    # Normalise velocity to be <= MAX_SPEED
+    v += 0.2 * MAX_SPEED * sigmoid(from_other_magnitude * 3) * (from_other / from_other_magnitude)
+
+  return v
 
 def get_velocity_to_avoid_obstacles(position, obstacle_map):
   v = np.zeros(2, dtype=np.float32)
-  v = 15 * MAX_SPEED * obstacle_map.get_gradient(position)
+  v = 20 * MAX_SPEED * obstacle_map.get_gradient(position)
   return v
 
 
@@ -58,7 +69,7 @@ def cap(v, max_speed):
   return v
 
 
-def get_velocity(position, goal_position, obstacle_map, mode='all'):
+def get_velocity(position, goal_position, avoid_positions, obstacle_map, mode='all'):
   if mode in ('goal', 'all'):
     v_goal = get_velocity_to_reach_goal(position, goal_position)
   else:
@@ -67,7 +78,11 @@ def get_velocity(position, goal_position, obstacle_map, mode='all'):
     v_avoid = get_velocity_to_avoid_obstacles(position, obstacle_map)
   else:
     v_avoid = np.zeros(2, dtype=np.float32)
-  v = v_goal + v_avoid
+  if mode in ('friendlies', 'all'):
+    v_avoid_friends = get_velocity_to_avoid_positions(position, avoid_positions)
+  else:
+    v_avoid_friends = np.zeros(2, dtype=np.float32)
+  v = v_goal + v_avoid + v_avoid_friends
   return cap(v, max_speed=MAX_SPEED)
 
 
