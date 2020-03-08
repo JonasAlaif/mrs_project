@@ -97,8 +97,8 @@ def run(args):
   # the target that the police will chase
   target = None
 
-  # Update controller 20 times a second
-  rate_limiter = rospy.Rate(20)
+  # Update controller 10 times a second
+  rate_limiter = rospy.Rate(10)
   while not rospy.is_shutdown():
     # first look for new incoming connections
     try:
@@ -216,17 +216,25 @@ def run(args):
     for name in baddies.keys():
       (pub, laser, gtpose) = baddies[name]
       (path, goal, time_created) = client_path_tuples[name]
-
+      '''
       u, w = baddie_navigation.navigate_baddie(name,
                                                laser,
                                                gtpose,
                                                client_path_tuples,
                                                occupancy_grid,
-                                               MAX_ITERATIONS)
+                                               MAX_ITERATIONS)'''
+      police_pos = [pol[2].pose[:2] for pol in police.values()]
+      u, w = police_navigation.navigate_police_2(name,
+                                               gtpose,
+                                               laser,
+                                               gtpose,
+                                               client_path_tuples,
+                                               occupancy_grid,
+                                               MAX_ITERATIONS, police_pos)
 
       if u is not None and w is not None:
         vel_msg = Twist()
-        vel_msg.linear.x = u
+        vel_msg.linear.x = 1.2 * u
         vel_msg.angular.z = w
         pub.publish(vel_msg)
 

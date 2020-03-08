@@ -78,8 +78,10 @@ def main():
     root = ET.parse(args.filename).getroot()
 
     # define the width  (columns) and height (rows) of your image
-    width = np.linspace(-args.dimensions, args.dimensions, num=args.resolution)
-    height = np.linspace(-args.dimensions, args.dimensions, num=args.resolution)
+    dims = float(args.dimensions)
+    res = int(args.resolution)
+    width = np.linspace(-dims, dims, num=res)
+    height = np.linspace(-dims, dims, num=res)
 
     coords = np.array(list(itertools.product(width, height)))
     occupancy = areOccupied(root, coords)
@@ -105,8 +107,8 @@ def main():
 
     # write the header to the file
     image = 'image: ./' + args.output + '.pgm\n'
-    resolution = 'resolution: ' + str(2.0 * args.dimensions / args.resolution) + '\n'
-    origin = 'origin: [' + str(-args.dimensions) + ', ' + str(-args.dimensions) + ', 0.0]\n'
+    resolution = 'resolution: ' + str(2.0 * dims / res) + '\n'
+    origin = 'origin: [' + str(-dims) + ', ' + str(-dims) + ', 0.0]\n'
     negate = 'negate: 0\n'
     occ = 'occupied_thresh: 0.65\n'
     free = 'free_thresh: 0.196\n'

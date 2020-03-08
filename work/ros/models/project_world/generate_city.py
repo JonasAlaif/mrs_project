@@ -46,12 +46,12 @@ def set_box_geom(geom1, geom2, size):
     size1.text = size
     size2.text = size
 
-CITY_SIZE = 5
-STREET_WIDTH = 0.5
-BLOCK_WIDTH = 1.6
+CITY_SIZE = 8
+STREET_WIDTH = 1
+BLOCK_WIDTH = 2
 WHOLE_BLOCK_WIDTH = BLOCK_WIDTH + STREET_WIDTH
 
-WALL_WIDTH = 0.15
+WALL_WIDTH = 1
 WALL_HEIGHT = 0.5
 X = 0
 Y = 1
@@ -59,8 +59,8 @@ Y = 1
 def make_walls(model):
     for x in range (0, 2):
         for y in range (0, 2):
-            x_pos = (CITY_SIZE + WALL_WIDTH / 2) * ((x + y) - 1)
-            y_pos = (CITY_SIZE + WALL_WIDTH / 2) * (x - y)
+            x_pos = (CITY_SIZE + WALL_WIDTH * 0.5) * ((x + y) - 1)
+            y_pos = (CITY_SIZE + WALL_WIDTH * 0.5) * (x - y)
             geom_col, geom_vis = make_link(model, "Wall_" + str(x) + "_" + str(y), str(x_pos) + " " + str(y_pos) + " " + str(WALL_HEIGHT/2) + " 0 -0 0")
             set_box_geom(geom_col, geom_vis, str(abs(2*y_pos) + WALL_WIDTH) + " " + str(abs(2*x_pos) + WALL_WIDTH) + " " + str(WALL_HEIGHT))
 
@@ -69,11 +69,11 @@ def make_box(model, center, size):
     set_box_geom(geom_col, geom_vis, str(size[X]) + " " + str(size[Y]) + " " + str(WALL_HEIGHT))
 
 def make_city(model):
-    number_of_blocks = int((2 * CITY_SIZE + STREET_WIDTH) / WHOLE_BLOCK_WIDTH)
+    number_of_blocks = int((2 * CITY_SIZE - STREET_WIDTH) / WHOLE_BLOCK_WIDTH)
     for x in range (0, number_of_blocks):
         for y in range (0, number_of_blocks):
-            x_pos = (x * WHOLE_BLOCK_WIDTH + BLOCK_WIDTH / 2) - CITY_SIZE
-            y_pos = (y * WHOLE_BLOCK_WIDTH + BLOCK_WIDTH / 2) - CITY_SIZE
+            x_pos = (x * WHOLE_BLOCK_WIDTH + BLOCK_WIDTH / 2) - CITY_SIZE + STREET_WIDTH
+            y_pos = (y * WHOLE_BLOCK_WIDTH + BLOCK_WIDTH / 2) - CITY_SIZE + STREET_WIDTH
             make_box(model, [x_pos, y_pos], [BLOCK_WIDTH, BLOCK_WIDTH])
 
 root = Element('sdf')
