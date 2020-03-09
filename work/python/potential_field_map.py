@@ -10,7 +10,6 @@ import yaml
 import os
 import re
 from scipy.ndimage.filters import minimum_filter
-import noise
 
 # Constants used for indexing.
 X = 0
@@ -18,8 +17,8 @@ Y = 1
 YAW = 2
 
 WALL_OFFSET = 8.5
-GOAL_POSITION = np.array([1.5, -1.5], dtype=np.float32)
-START_POSITION = np.array([-7.5, 0], dtype=np.float32)
+GOAL_POSITION = np.array([9, 0], dtype=np.float32)
+START_POSITION = np.array([-7.5, 3.5], dtype=np.float32)
 MAX_SPEED = 2.
 
 ROBOT_RADIUS = 0.105 / 2.
@@ -42,19 +41,24 @@ def get_velocity_to_reach_goal(position, goal_position):
 
 def get_velocity_to_avoid_positions(position, other_positions):
   v = np.zeros(2, dtype=np.float32)
-  for other_pos in other_positions:
+  sum_weight = 0.0
+  for (other_pos, weight) in other_positions:
+    sum_weight += weight
     from_other = position - other_pos
     from_other_magnitude = np.linalg.norm(from_other)
+    from_other_right = np.array((from_other[1], -from_other[0]))
     if from_other_magnitude < 1e-3:
       continue
     # Normalise velocity to be <= MAX_SPEED
-    from_other_unit = from_other / from_other_magnitude
-    dropoff = max(1, from_other_magnitude / 8.0)
-    away_speed = MAX_SPEED * from_other_unit / dropoff
-    perlin = np.array([noise.pnoise2(position[0], position[1]), noise.pnoise2(position[0], position[1], base=1)])
-    v += 3./4. * away_speed + 1./4. * MAX_SPEED * perlin
-
-  return v
+    from_other_unit = (from_other + from_other_right * .1) / (from_other_magnitude * 1.1)
+    dropoff = max(1, from_other_magnitude / 4.0)
+    away_speed = weight * from_other_unit / dropoff
+    v += away_speed
+  v_magnitude = np.linalg.norm(v)
+  if v_magnitude < 1e-3:
+      return v
+  avg_weight = sum_weight / len(other_positions)
+  return MAX_SPEED * sigmoid(v_magnitude / MAX_SPEED) * v / v_magnitude * avg_weight
 
 def get_velocity_to_avoid_obstacles(position, obstacle_map):
   v = np.zeros(2, dtype=np.float32)
@@ -104,14 +108,8 @@ class ObstacleMap(object):
     blurred_map = values.copy()
     w = 2 * int(ROBOT_RADIUS / resolution) + 1
     blurred_map = minimum_filter(blurred_map, w)
-    sig_1 = int(res_inv / 2)
-    blurred_map = gaussian_filter(blurred_map, sigma=sig_1)
-    blurred_map = np.multiply(blurred_map, values)
-    sig_2 = int(res_inv / 4)
-    blurred_map = gaussian_filter(blurred_map, sigma=sig_2)
-    blurred_map = np.multiply(blurred_map, values)
-    sig_3 = int(res_inv / 8)
-    self._blurred_map = gaussian_filter(blurred_map, sigma=sig_3)
+    sig_1 = int(res_inv / 4)
+    self._blurred_map = gaussian_filter(blurred_map, sigma=sig_1)
     gx, gy = np.gradient(self._blurred_map * res_inv * 2)
     self._values = np.stack([gx, gy], axis=-1)
     
@@ -237,7 +235,7 @@ def display_obst_map(obstacle_map, mode='all'):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Runs obstacle avoidance with a potential field')
   parser.add_argument('--mode', action='store', default='all', help='Which velocity field to plot.', choices=['obstacle', 'goal', 'all'])
-  parser.add_argument('--map', action='store', default='map_city_2', help='Which map to use.')
+  parser.add_argument('--map', action='store', default='map_city_3', help='Which map to use.')
   args, unknown = parser.parse_known_args()
 
   obstacle_map = initialize(args.map)

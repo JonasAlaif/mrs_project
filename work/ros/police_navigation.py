@@ -50,7 +50,7 @@ obstacle_map = None
 
 def initialize():
   global obstacle_map
-  obstacle_map = potential_field_map.initialize('/home/jonas/catkin_ws/src/mrs_project/work/python/map_city_2')
+  obstacle_map = potential_field_map.initialize('/home/jonas/catkin_ws/src/mrs_project/work/python/map_city_3')
   #potential_field_map.display_obst_map(obstacle_map)
 
 
@@ -137,7 +137,7 @@ def navigate_police_2(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, ma
   if baddie_gtp == None:
     return 0, 0
   global obstacle_map
-  control_pos = gtpose.pose[:2] + np.array([EPSILON*np.cos(gtpose.pose[YAW]), EPSILON*np.sin(gtpose.pose[YAW])]) / 2
+  control_pos = gtpose.pose[:2] + np.array([EPSILON*np.cos(gtpose.pose[YAW]), EPSILON*np.sin(gtpose.pose[YAW])]) / 3
   v = potential_field_map.get_velocity(control_pos, baddie_gtp.pose[:2], other_police, obstacle_map)
   u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
   #print('My pos: ', control_pos)

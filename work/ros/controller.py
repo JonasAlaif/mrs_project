@@ -196,7 +196,7 @@ def run(args):
       (path, goal, time_created) = client_path_tuples[name]
       other_police = dict(police)
       del other_police[name]
-      other_police_pos = [pol[2].pose[:2] for pol in other_police.values()]
+      other_police_pos = [(pol[2].pose[:2], 0.5) for pol in other_police.values()]
 
       baddie_gtpose = baddies[target][2] if target is not None else None
       u, w = police_navigation.navigate_police_2(name,
@@ -223,11 +223,14 @@ def run(args):
                                                client_path_tuples,
                                                occupancy_grid,
                                                MAX_ITERATIONS)'''
-      police_pos = [pol[2].pose[:2] for pol in police.values()]
+      police_pos = [(pol[2].pose[:2], 1.6) for pol in police.values()]
+      class Struct(object): pass
+      goal= Struct()
+      goal.pose = np.array([9.0, 0.0])
       u, w = police_navigation.navigate_police_2(name,
                                                gtpose,
                                                laser,
-                                               gtpose,
+                                               goal,
                                                client_path_tuples,
                                                occupancy_grid,
                                                MAX_ITERATIONS, police_pos)
