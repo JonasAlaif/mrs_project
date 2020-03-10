@@ -56,6 +56,7 @@ SPEED = 0.1
 
 def run(args):
   obstacle_map = police_navigation.initialize()
+  baddie_localization.initialize()
   avoidance_method = getattr(obstacle_avoidance, args.mode)
   rospy.init_node('controller')
   occupancy_grid_base = None
@@ -195,8 +196,13 @@ def run(args):
     new_time = rospy.get_time()
     for name in baddies.keys():
       gtpose = baddies[name][2]
+      if not gtpose.ready:
+        continue
       police_observed_pose = gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map)
       b_particles = baddies_particles[name]
+      for particle in b_particles:
+        if not particle.ready:
+          particle.initialize(gtpose.pose)
       dt = new_time - curr_time
       baddies_particles[name] = baddie_localization.update_particles(b_particles, dt, police_observed_pose[0], police_observed_pose[1], num_particles, obstacle_map)
     curr_time = new_time

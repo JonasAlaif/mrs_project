@@ -39,16 +39,33 @@ YAW = 2
 class Particle(object):
   """Represents a particle."""
 
-  def __init__(self, start_pose):
-    self._pose = start_pose.copy()
+  def __init__(self):
+    self._pose = None
     self._weight = 1.
+    self._ready = False
+
+  @property
+  def ready(self):
+    return self._ready
+
+  @property
+  def pose(self):
+    return self._pose
+
+  @property
+  def weight(self):
+    return self._weight
+
+  def initialize(self, start_pose):
+    self._pose = start_pose.copy()
+    self._ready = True
 
   def is_valid(self, occupancy_grid):
     return occupancy_grid.get_occupancy(self._pose[:2])
 
 
   def move(self, dt):
-    delta_pose = np.array([0, 0])
+    delta_pose = np.array([0, 0, 0])
 
     self._pose += delta_pose
 
@@ -89,7 +106,7 @@ def update_particles(particles, dt, measured_pose, variance, num_particles, occu
         j = num_particles - 1
       current_boundary = current_boundary + particles[j].weight
     new_particles.append(copy.deepcopy(particles[j]))
-  
+  '''
   # Publish particles.
   particle_msg = PointCloud()
   particle_msg.header.seq = frame_id
@@ -107,7 +124,7 @@ def update_particles(particles, dt, measured_pose, variance, num_particles, occu
     intensity_channel.values.append(p.weight)
   particle_publisher.publish(particle_msg)
   frame_id += 1
-
+  '''
   return new_particles
 
 '''
