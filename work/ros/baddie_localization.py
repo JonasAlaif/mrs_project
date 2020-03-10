@@ -68,6 +68,7 @@ class Particle(object):
     delta_pose = np.array([0, 0, 0])
 
     self._pose += delta_pose
+    #test
 
   def compute_weight(self, measured_pose, variance, occupancy_grid):
 
