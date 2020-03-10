@@ -5,14 +5,7 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-<<<<<<< HEAD
-<<<<<<< HEAD
 import numpy as np
-=======
->>>>>>> parent of 82d681a... Create branch
-=======
-import numpy as np
->>>>>>> scratch-ravi
 import os
 import random
 import rospy
@@ -36,24 +29,7 @@ try:
   import rrt_navigation
   import baddie_navigation
   import police_navigation
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> scratch-ravi
-  import localize_ext
-
-except ImportError:
-  raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
-
-directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../python')
-sys.path.insert(0, directory)
-try:
-  import rrt
-<<<<<<< HEAD
-except ImportError:
-  raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
-
-=======
+  import baddie_localization
 except ImportError:
   raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
 
@@ -64,12 +40,6 @@ try:
 except ImportError:
   raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
 
->>>>>>> master
-=======
-except ImportError:
-  raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
-
->>>>>>> scratch-ravi
 # Constants for occupancy grid.
 FREE = 0
 UNKNOWN = 1
@@ -85,7 +55,8 @@ YAW = 2
 SPEED = 0.1
 
 def run(args):
-  police_navigation.initialize()
+  obstacle_map = police_navigation.initialize()
+  baddie_localization.initialize()
   avoidance_method = getattr(obstacle_avoidance, args.mode)
   rospy.init_node('controller')
   occupancy_grid_base = None
@@ -114,27 +85,15 @@ def run(args):
   # list of accepted sockets
   sockets = list()
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 
   # these will be dictionaries indexed on the robot name which give you back the 4-tuple
   # (Publisher, SimpeLaser, GroundtruthPose)
   police = dict()
   baddies = dict()
+  baddies_particles = dict()
+  num_particles = 50
+  curr_time = rospy.get_time()
 
-=======
-=======
->>>>>>> scratch-ravi
-
-  # these will be dictionaries indexed on the robot name which give you back the 4-tuple
-  # (Publisher, SimpeLaser, GroundtruthPose)
-  police = dict()
-  baddies = dict()
-
-<<<<<<< HEAD
->>>>>>> master
-=======
->>>>>>> scratch-ravi
   # this will be a dictionary indexed on the robot name which gives you back the 3-tuple
   # (path, goal, time_created)
   # this is used for RRT
@@ -143,8 +102,8 @@ def run(args):
   # the target that the police will chase
   target = None
 
-  # Update controller 10 times a second
-  rate_limiter = rospy.Rate(10)
+  # Update controller 20 times a second
+  rate_limiter = rospy.Rate(20)
   while not rospy.is_shutdown():
     # first look for new incoming connections
     try:
@@ -171,33 +130,29 @@ def run(args):
           police[name] = temp
         else:
           baddies[name] = temp
+          baddies_particles[name] = [baddie_localization.Particle() for _ in range(num_particles)]
 
         # used for rrt
         time_now = float(rospy.Time.now().to_sec())
         client_path_tuples[name] = (None,
-                                    rrt.sample_random_position(occupancy_grid_base),
+                                    np.array([9.0, 0.0]),
                                     time_now)
         print("registered robot", name, "with role", role)
 
-    # create an occupancy grid containing the original grid and the robots (to avoid collisions)
-    # this is currently unused
-    occupancy_grid = rrt.OccupancyGrid(occupancy_grid_base.values,
-                                       np.append(occupancy_grid_base.origin, 0),
-                                       occupancy_grid_base.resolution)
     for name in police.keys():
       # get the location of the bot
       centre = police[name][2].pose[:2]
-      centre_indexes = occupancy_grid.get_index(centre)
+      centre_indexes = occupancy_grid_base.get_index(centre)
       for i in range(-1, 1):
         for j in range(-1, 1):
-          occupancy_grid.values[centre_indexes[0] + i][centre_indexes[1] + j] = rrt.OCCUPIED
+          occupancy_grid_base.values[centre_indexes[0] + i][centre_indexes[1] + j] = rrt.OCCUPIED
     for name in baddies.keys():
       # get the location of the bot
       centre = baddies[name][2].pose[:2]
-      centre_indexes = occupancy_grid.get_index(centre)
+      centre_indexes = occupancy_grid_base.get_index(centre)
       for i in range(-1, 1):
         for j in range(-1, 1):
-          occupancy_grid.values[centre_indexes[0] + i][centre_indexes[1] + j] = rrt.OCCUPIED
+          occupancy_grid_base.values[centre_indexes[0] + i][centre_indexes[1] + j] = rrt.OCCUPIED
 
     # check if any police have caught any baddies
     caught_baddies = []
@@ -228,40 +183,45 @@ def run(args):
 
     # pick a baddie for all the police to chase if there isn't already one
     if len(baddies.keys()) > 0 and target == None:
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> scratch-ravi
-	
-      for name in baddies.keys():
-        # TODO change baddie selection policy (closest/furthest/something else?)
-	
-<<<<<<< HEAD
-=======
       for name in random.sample(baddies.keys(), len(baddies.keys())):
         # TODO change baddie selection policy (closest/furthest/something else?)
->>>>>>> master
-=======
->>>>>>> scratch-ravi
         if baddies[name][2].ready:
           target = name
           break
       else:
         target = None
 
+
+    # update baddie particles
+    new_time = rospy.get_time()
+    for name in baddies.keys():
+      gtpose = baddies[name][2]
+      if not gtpose.ready:
+        continue
+      police_observed_pose = gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map)
+      b_particles = baddies_particles[name]
+      for particle in b_particles:
+        if not particle.ready:
+          particle.initialize(gtpose.pose)
+      dt = new_time - curr_time
+      baddies_particles[name] = baddie_localization.update_particles(b_particles, dt, police_observed_pose[0], police_observed_pose[1], num_particles, obstacle_map)
+    curr_time = new_time
+
+    baddie_gtpose = baddies[target][2] if target is not None else None
+    baddie_pose = baddie_gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map) if target is not None else None
     # update police navigation
     for name in police.keys():
       (pub, laser, gtpose) = police[name]
       (path, goal, time_created) = client_path_tuples[name]
       other_police = dict(police)
       del other_police[name]
-      other_police_pos = [pol[2].pose[:2] for pol in other_police.values()]
-
-      baddie_gtpose = baddies[target][2] if target is not None else None
-      u, w = police_navigation.navigate_police_2(name,
+      other_police_pos = [(pol[2].pose[:2], 0.5) for pol in other_police.values()]
+      u, w = 0, 0
+      if baddie_pose != None and baddie_pose[1] > 0.1:
+        u, w = police_navigation.navigate_police_2(name,
                                                gtpose,
                                                laser,
-                                               baddie_gtpose,
+                                               baddie_pose[0],
                                                client_path_tuples,
                                                occupancy_grid_base,
                                                MAX_ITERATIONS, other_police_pos)
@@ -282,13 +242,13 @@ def run(args):
                                                client_path_tuples,
                                                occupancy_grid,
                                                MAX_ITERATIONS)'''
-      police_pos = [pol[2].pose[:2] for pol in police.values()]
+      police_pos = [(pol[2].pose[:2], 1.6) for pol in police.values()]
       u, w = police_navigation.navigate_police_2(name,
                                                gtpose,
                                                laser,
-                                               gtpose,
+                                               goal,
                                                client_path_tuples,
-                                               occupancy_grid,
+                                               occupancy_grid_base,
                                                MAX_ITERATIONS, police_pos)
 
       if u is not None and w is not None:
@@ -299,7 +259,7 @@ def run(args):
 
 
     # sleep so we don't overutilise the CPU
-    #rate_limiter.sleep()
+    rate_limiter.sleep()
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Controls the robots')
