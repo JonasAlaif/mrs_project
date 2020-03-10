@@ -51,7 +51,7 @@ def get_velocity_to_avoid_positions(position, other_positions):
       continue
     # Normalise velocity to be <= MAX_SPEED
     from_other_unit = (from_other + from_other_right * .1) / (from_other_magnitude * 1.1)
-    dropoff = max(1, from_other_magnitude / 4.0)
+    dropoff = max(1, from_other_magnitude - 4.0)
     away_speed = weight * from_other_unit / dropoff
     v += away_speed
   v_magnitude = np.linalg.norm(v)
@@ -109,7 +109,8 @@ class ObstacleMap(object):
     w = 2 * int(ROBOT_RADIUS / resolution) + 1
     blurred_map = minimum_filter(blurred_map, w)
     sig_1 = int(res_inv / 4)
-    self._blurred_map = gaussian_filter(blurred_map, sigma=sig_1)
+    blurred_map = gaussian_filter(blurred_map, sigma=sig_1)
+    self._blurred_map = np.multiply(blurred_map, values)
     gx, gy = np.gradient(self._blurred_map * res_inv * 2)
     self._values = np.stack([gx, gy], axis=-1)
     
@@ -161,6 +162,9 @@ class ObstacleMap(object):
 
   def get_gradient(self, position):
     return self._values[self.get_index(position)]
+
+  def get_visibility(self, position):
+    return self._blurred_map[self.get_index(position)]
 
 
 def read_pgm(filename, byteorder='>'):

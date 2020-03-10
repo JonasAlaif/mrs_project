@@ -54,7 +54,7 @@ YAW = 2
 SPEED = 0.1
 
 def run(args):
-  police_navigation.initialize()
+  obstacle_map = police_navigation.initialize()
   avoidance_method = getattr(obstacle_avoidance, args.mode)
   rospy.init_node('controller')
   occupancy_grid_base = None
@@ -129,7 +129,7 @@ def run(args):
         # used for rrt
         time_now = float(rospy.Time.now().to_sec())
         client_path_tuples[name] = (None,
-                                    rrt.sample_random_position(occupancy_grid_base),
+                                    np.array([9.0, 0.0]),
                                     time_now)
         print("registered robot", name, "with role", role)
 
@@ -190,6 +190,8 @@ def run(args):
       else:
         target = None
 
+    baddie_gtpose = baddies[target][2] if target is not None else None
+    baddie_pose = baddie_gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map) if target is not None else None
     # update police navigation
     for name in police.keys():
       (pub, laser, gtpose) = police[name]
@@ -197,12 +199,12 @@ def run(args):
       other_police = dict(police)
       del other_police[name]
       other_police_pos = [(pol[2].pose[:2], 0.5) for pol in other_police.values()]
-
-      baddie_gtpose = baddies[target][2] if target is not None else None
-      u, w = police_navigation.navigate_police_2(name,
+      u, w = 0, 0
+      if baddie_pose != None and baddie_pose[1] > 0.1:
+        u, w = police_navigation.navigate_police_2(name,
                                                gtpose,
                                                laser,
-                                               baddie_gtpose,
+                                               baddie_pose[0],
                                                client_path_tuples,
                                                occupancy_grid_base,
                                                MAX_ITERATIONS, other_police_pos)
@@ -224,9 +226,6 @@ def run(args):
                                                occupancy_grid,
                                                MAX_ITERATIONS)'''
       police_pos = [(pol[2].pose[:2], 1.6) for pol in police.values()]
-      class Struct(object): pass
-      goal= Struct()
-      goal.pose = np.array([9.0, 0.0])
       u, w = police_navigation.navigate_police_2(name,
                                                gtpose,
                                                laser,
