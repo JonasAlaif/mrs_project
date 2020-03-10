@@ -31,11 +31,8 @@ except ImportError:
 
 directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../python')
 sys.path.insert(0, directory)
-try:
-  import rrt
-  import potential_field_map
-except ImportError:
-  raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
+import rrt
+import potential_field_map
 
 MAX_ITERATIONS = 1500
 EPSILON = 0.1
@@ -50,7 +47,7 @@ obstacle_map = None
 
 def initialize():
   global obstacle_map
-  obstacle_map = potential_field_map.initialize('/home/jonas/catkin_ws/src/mrs_project/work/python/map_city_3')
+  obstacle_map = potential_field_map.initialize('/home/ivan/catkin_ws/src/mrs_project/work/python/map_city_3')
   #potential_field_map.display_obst_map(obstacle_map)
 
 
@@ -144,3 +141,5 @@ def navigate_police_2(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, ma
   #print('Target pos: ', baddie_gtp.pose[:2])
   #print('Direction pos: ', v)
   return u, w
+
+

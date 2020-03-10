@@ -16,7 +16,7 @@
       <arg name="model" value="$(arg model)"/>
       <arg name="name" value="turtlebot_1"/>
       <arg name="role" value="police"/>
-      <arg name="x_pos" value="7.5"/>
+      <arg name="x_pos" value="-1.5"/>
       <arg name="y_pos" value="-1.5"/>
       <arg name="z_pos" value="0.0"/>
     </include>
@@ -27,7 +27,7 @@
       <arg name="model" value="$(arg model)"/>
       <arg name="name" value="turtlebot_2"/>
       <arg name="role" value="police"/>
-      <arg name="x_pos" value="7.5"/>
+      <arg name="x_pos" value="-1.5"/>
       <arg name="y_pos" value="1.5"/>
       <arg name="z_pos" value="0.0"/>
     </include>
@@ -38,8 +38,8 @@
       <arg name="model" value="$(arg model)"/>
       <arg name="name" value="turtlebot_3"/>
       <arg name="role" value="baddie"/>
-      <arg name="x_pos" value="-7.5"/>
-      <arg name="y_pos" value="3.5"/>
+      <arg name="x_pos" value="1.5"/>
+      <arg name="y_pos" value="1.5"/>
       <arg name="z_pos" value="0.0"/>
     </include>
   </group>
@@ -49,8 +49,8 @@
       <arg name="model" value="$(arg model)"/>
       <arg name="name" value="turtlebot_4"/>
       <arg name="role" value="baddie"/>
-      <arg name="x_pos" value="-7.5"/>
-      <arg name="y_pos" value="-3.5"/>
+      <arg name="x_pos" value="1.5"/>
+      <arg name="y_pos" value="-1.5"/>
       <arg name="z_pos" value="0.0"/>
     </include>
   </group>

@@ -28,7 +28,7 @@ def sigmoid(x):
 
 def get_velocity_to_reach_goal(position, goal_position):
   v = np.zeros(2, dtype=np.float32)
-  to_goal = goal_position - position
+  to_goal = goal_position[:2] - position[:2]
   to_goal_magnitude = np.linalg.norm(to_goal)
   if to_goal_magnitude < 1e-3:
     return 0
@@ -62,7 +62,7 @@ def get_velocity_to_avoid_positions(position, other_positions):
 
 def get_velocity_to_avoid_obstacles(position, obstacle_map):
   v = np.zeros(2, dtype=np.float32)
-  v = MAX_SPEED * obstacle_map.get_gradient(position)
+  v = MAX_SPEED * obstacle_map.get_gradient(position[:2])
   return v
 
 
@@ -93,7 +93,9 @@ def get_velocity(position, goal_position, avoid_positions, obstacle_map, mode='a
     v_avoid_friends = get_velocity_to_avoid_positions(position, avoid_positions)
   else:
     v_avoid_friends = np.zeros(2, dtype=np.float32)
-  v = v_goal + v_avoid + v_avoid_friends
+  v = v_goal
+  v += v_avoid
+  v += v_avoid_friends
   return cap(v, max_speed=MAX_SPEED)
 
 
