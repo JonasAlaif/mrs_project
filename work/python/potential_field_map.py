@@ -106,9 +106,11 @@ class ObstacleMap(object):
 
     # Inflate obstacles (using a convolution).
     res_inv = 1.0 / resolution
-    blurred_map = values.copy()
+    occupancy_map = values.copy()
     w = 2 * int(ROBOT_RADIUS / resolution) + 1
-    blurred_map = minimum_filter(blurred_map, w)
+    self._occupancy_map = minimum_filter(occupancy_map, w)
+
+    blurred_map = self._occupancy_map.copy()
     sig_1 = int(res_inv / 4)
     blurred_map = gaussian_filter(blurred_map, sigma=sig_1)
     self._blurred_map = np.multiply(blurred_map, values)
@@ -166,6 +168,9 @@ class ObstacleMap(object):
 
   def get_visibility(self, position):
     return self._blurred_map[self.get_index(position)]
+
+  def get_occupancy(self, position):
+    return self._occupancy_map[self.get_index(position)] > 0.5
 
 
 def read_pgm(filename, byteorder='>'):
