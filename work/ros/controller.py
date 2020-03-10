@@ -49,7 +49,10 @@ X = 0
 Y = 1
 YAW = 2
 
+
 SPEED = 0.1
+
+EXIT_POSITION = np.array([9.0, 0.0])
 
 def run(args):
   police_navigation.initialize()
@@ -180,8 +183,19 @@ def run(args):
         target = None
 
       # for now, also delete the baddie model
-      rospy.ServiceProxy('gazebo/delete_model', DeleteModel)('turtlebot3_burger_' + badname)
+      #rospy.ServiceProxy('gazebo/delete_model', DeleteModel)('turtlebot3_burger_' + badname)
       print('baddie', name, 'lasted', time_lasted, 'seconds')
+
+    for badname in baddies.keys():
+      (pub, laser, gtpose, t) = baddies[badname]
+      if gtpose.ready:
+        dist = np.linalg.norm(gtpose.pose[:2] - EXIT_POSITION)
+        if dist < 0.5:
+          print(name, 'escaped')
+          del baddies[badname]
+          del client_path_tuples[badname]
+          if badname == target:
+            target = None
 
     # pick a baddie for all the police to chase if there isn't already one
     if len(baddies.keys()) > 0 and target == None:
@@ -203,8 +217,8 @@ def run(args):
 
       baddie_gtpose = baddies[target][2] if target is not None else None
       u, w = police_navigation.navigate_police_2(name,
-                                               gtpose,
                                                laser,
+                                               gtpose,
                                                baddie_gtpose,
                                                client_path_tuples,
                                                occupancy_grid_base,
@@ -226,18 +240,23 @@ def run(args):
                                                client_path_tuples,
                                                occupancy_grid,
                                                MAX_ITERATIONS)'''
-      police_pos = [(pol[2].pose[:2], 1.6) for pol in police.values()]
+      other_baddies = dict(baddies)
+      del other_baddies[name]
+      police_pos = [(pol[2].pose[:2], 1.5) for pol in police.values()]
+      baddies_pos = [(bad[2].pose[:2], 1) for bad in other_baddies.values()]
+      avoid_pos = police_pos + baddies_pos
+
       class Struct(object): pass
       goal = Struct()
-      goal.pose = np.array([9.0, 0.0])
-      u, w = baddie_navigation.baddie_braitenberg(name,
+      goal.pose = EXIT_POSITION
+      u, w = baddie_navigation.navigate_baddie_pot_nai(name,
                                                laser,
                                                gtpose,
-                                               #goal,
+                                               goal,
                                                client_path_tuples,
                                                occupancy_grid_base,
                                                MAX_ITERATIONS,
-                                               police_pos)
+                                               avoid_pos)
 
       if u is not None and w is not None:
         vel_msg = Twist()

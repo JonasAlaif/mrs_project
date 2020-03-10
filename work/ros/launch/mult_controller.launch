@@ -1,5 +1,5 @@
 <launch>
     <arg name="mode" default="braitenberg"/>
 
-    <node pkg="mrs_project" type="controller.py" name="turtlebot_controller" args="--mode=$(arg mode) --map=$(find mrs_project)/work/python/map_city_2" output="screen"></node>
+    <node pkg="mrs_project" type="controller.py" name="turtlebot_controller" args="--mode=$(arg mode) --map=$(find mrs_project)/work/python/map_city_3" output="screen"></node>
 </launch>

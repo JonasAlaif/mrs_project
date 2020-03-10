@@ -45,13 +45,13 @@ X = 0
 Y = 1
 YAW = 2
 
-SPEED = 0.1
+SPEED = 0.2
 
 obstacle_map = None
 
 def initialize():
   global obstacle_map
-  obstacle_map = potential_field_map.initialize('/home/ivan/catkin_ws/src/mrs_project/work/python/map_city_2')
+  obstacle_map = potential_field_map.initialize('/home/ivan/catkin_ws/src/mrs_project/work/python/map_city_3')
   #potential_field_map.display_obst_map(obstacle_map)
 
 '''
@@ -186,6 +186,17 @@ def baddie_braitenberg(name, laser, gtpose, paths, occupancy_grid, max_iteration
   return u, w
 
   
+def navigate_baddie_pot_nai(name, laser, gtpose, baddie_gtp, paths, occupancy_grid, max_iterations, other_police):
+  if baddie_gtp == None:
+    return 0, 0
+  global obstacle_map
+  control_pos = gtpose.pose[:2] + np.array([EPSILON*np.cos(gtpose.pose[YAW]), EPSILON*np.sin(gtpose.pose[YAW])]) / 3
+  v = potential_field_map.get_velocity(control_pos, baddie_gtp.pose[:2], other_police, obstacle_map, mode='all')
+  u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
+  #print('My pos: ', control_pos)
+  #print('Target pos: ', baddie_gtp.pose[:2])
+  #print('Direction pos: ', v)
+  return u, w
 
 
 

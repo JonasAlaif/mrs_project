@@ -85,11 +85,11 @@ def get_velocity(position, goal_position, avoid_positions, obstacle_map, mode='a
     v_goal = get_velocity_to_reach_goal(position, goal_position)
   else:
     v_goal = np.zeros(2, dtype=np.float32)
-  if mode in ('obstacle', 'all'):
+  if mode in ('friendlies', 'obstacle', 'all'):
     v_avoid = get_velocity_to_avoid_obstacles(position, obstacle_map)
   else:
     v_avoid = np.zeros(2, dtype=np.float32)
-  if mode in ('friendlies', 'all'):
+  if mode in ('friendlies', 'obstacle', 'all'):
     v_avoid_friends = get_velocity_to_avoid_positions(position, avoid_positions)
   else:
     v_avoid_friends = np.zeros(2, dtype=np.float32)
@@ -112,7 +112,7 @@ class ObstacleMap(object):
     blurred_map = minimum_filter(blurred_map, w)
     sig_1 = int(res_inv / 4)
     self._blurred_map = gaussian_filter(blurred_map, sigma=sig_1)
-    gx, gy = np.gradient(self._blurred_map * res_inv * 2)
+    gx, gy = np.gradient(self._blurred_map * res_inv * 3)
     self._values = np.stack([gx, gy], axis=-1)
     
     self._origin = np.array(origin[:2], dtype=np.float32)

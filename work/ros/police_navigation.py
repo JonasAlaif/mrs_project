@@ -130,7 +130,7 @@ def navigate_police(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_
 
 
 
-def navigate_police_2(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_iterations, other_police):
+def navigate_police_2(name, laser, gtpose, baddie_gtp, paths, occupancy_grid, max_iterations, other_police):
   if baddie_gtp == None:
     return 0, 0
   global obstacle_map
