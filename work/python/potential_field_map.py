@@ -16,9 +16,10 @@ X = 0
 Y = 1
 YAW = 2
 
-WALL_OFFSET = 8.5
+WALL_OFFSET = 8.7
 GOAL_POSITION = np.array([9, 0], dtype=np.float32)
-START_POSITION = np.array([-7.5, 3.5], dtype=np.float32)
+START_POSITION = np.array([-7.5, 5.35], dtype=np.float32)
+START_POSITION_2 = np.array([-7.5, 7.5], dtype=np.float32)
 MAX_SPEED = 2.
 
 ROBOT_RADIUS = 0.105 / 2.
@@ -202,12 +203,13 @@ def display_obst_map(obstacle_map, mode='all'):
   obstacle_map.draw()
   #obstacle_map.draw_avoidance()
   
+  plt.scatter(START_POSITION_2[X], START_POSITION_2[Y], s=10, marker='o', color='green', zorder=1000)
   plt.scatter(START_POSITION[X], START_POSITION[Y], s=10, marker='o', color='green', zorder=1000)
   plt.scatter(GOAL_POSITION[X], GOAL_POSITION[Y], s=10, marker='o', color='red', zorder=1000)
 
   # Plot field.
-  Xs, Ys = np.meshgrid(np.linspace(-WALL_OFFSET, WALL_OFFSET, 30),
-                     np.linspace(-WALL_OFFSET, WALL_OFFSET, 30))
+  Xs, Ys = np.meshgrid(np.linspace(-WALL_OFFSET, WALL_OFFSET, 60),
+                     np.linspace(-WALL_OFFSET, WALL_OFFSET, 60))
   U = np.zeros_like(Xs)
   V = np.zeros_like(Xs)
   for i in range(len(Xs)):
@@ -221,13 +223,20 @@ def display_obst_map(obstacle_map, mode='all'):
   # Uses Euler integration.
   dt = 0.01
   x = START_POSITION
+  x_2 = START_POSITION_2
   positions = [x]
-  for t in np.arange(0., 40., dt):
-    v = get_velocity(x, GOAL_POSITION, [], obstacle_map, mode)
+  positions_2 = [x_2]
+  for t in np.arange(0., 17., dt):
+    v = get_velocity(x, GOAL_POSITION, [(x_2, 0.8)], obstacle_map, mode)
+    v_2 = get_velocity(x_2, GOAL_POSITION, [(x, 0.8)], obstacle_map, mode)
     x = x + v * dt
+    x_2 = x_2 + v_2 * dt
     positions.append(x)
+    positions_2.append(x_2)
   positions = np.array(positions)
+  positions_2 = np.array(positions_2)
   plt.plot(positions[:, 0], positions[:, 1], lw=2, c='r')
+  plt.plot(positions_2[:, 0], positions_2[:, 1], lw=2, c='b')
 
   plt.axis('equal')
   plt.xlabel('x')
