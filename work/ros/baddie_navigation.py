@@ -50,7 +50,13 @@ TODO upgrade this documentation if the description of this function changes
 navigate_baddie takes a series of arguments and gives you back the straight-line and angular velocities
 that you should pass to the robot in order to follow the path.
 This function will select a random goal for the baddie each time it reaches its current goal.
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
 
+>>>>>>> master
+=======
+>>>>>>> scratch-ravi
 Arguments:
     name - the name of the robot being navigated
     gtpose - the GroundtruthPose of the robot being navigated

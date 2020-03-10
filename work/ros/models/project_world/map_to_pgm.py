@@ -13,40 +13,13 @@ def boxOccupied(box, positions):
     boxDims = box.find('size').text.split()
     return np.array([abs(pos[X]) <= float(boxDims[0]) / 2 and abs(pos[Y]) <= float(boxDims[1]) / 2 for pos in positions])
 
-def cylinderOccupied(cylinder, positions):
+def cylinderOccupied(cylinder, pos):
     return False
-
-def parse_point(point):
-    pointPos = point.text.split()
-    return np.array([float(pointPos[0]), float(pointPos[1])])
-
-def compose_lr_of_line(p1, p2, my_pos, curr_lr):
-    if (curr_lr > 2):
-        return curr_lr
-    line = p2 - p1
-    new_lr = np.sign(np.dot(my_pos - p1, np.array([line[Y], -line[X]])))
-    if (curr_lr == 0):
-        return new_lr
-    if (new_lr == curr_lr):
-        return curr_lr
-    else:
-        return 3
-
-def polylineOccupied(polyline, positions):
-    all_points = polyline.findall('point')
-    curr_point = parse_point(all_points[-1])
-    pos_lrs = np.zeros(positions.shape[0])
-    for point in all_points:
-        new_point = parse_point(point)
-        pos_lrs = np.array([compose_lr_of_line(curr_point, new_point, positions[i], pos_lrs[i]) for i in range(0, positions.shape[0])])
-        curr_point = new_point
-    return np.array([lrs_pos < 2 for lrs_pos in pos_lrs])
 
 # map the inputs to the function blocks
 handleShape = {
     'box' : boxOccupied,
-    'cylinder': cylinderOccupied,
-    'polyline': polylineOccupied
+    'cylinder': cylinderOccupied
 }
 
 def getFrame(elem):
@@ -93,11 +66,11 @@ def main():
     parser.add_argument("-f", "--file", dest="filename",
                         help="XML map file (.sdf)", default="model.sdf")
     parser.add_argument("-o", "--out", dest="output",
-                        help="File name to output (defualt map)", default="map_city_3")
+                        help="File name to output (defualt map)", default="map")
     parser.add_argument("-d", "--dims", dest="dimensions",
-                        help="Width and Height of map to display", default=9.5)
+                        help="Width and Height of map to display", default=6.0)
     parser.add_argument("-r", "--res", dest="resolution",
-                        help="Resolution in pixels to display", default=300)
+                        help="Resolution in pixels to display", default=200)
     args = parser.parse_args()
     if args.filename == None:
         print "No input file provided, use -f to choose the .sdf map file!"

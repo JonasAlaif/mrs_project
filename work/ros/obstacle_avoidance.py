@@ -66,21 +66,6 @@ def rule_based(front, front_left, front_right, left, right):
 
   return u, w
 
-def check_line_of_sight(from_pos, to_pos, obstacle_map):
-  uncertainty = 1
-  curr_pos = from_pos.copy()
-  goal_pos = to_pos.copy()
-  step = to_pos - from_pos
-  step = step / np.amax(np.abs(step)) * obstacle_map.resolution
-  step_size = np.linalg.norm(step)
-  while step_size < np.linalg.norm(goal_pos - curr_pos):
-    curr_uncertainty = obstacle_map.get_visibility(curr_pos)
-    uncertainty *= np.power(curr_uncertainty, step_size)
-    #print(uncertainty)
-    if uncertainty < 1e-10:
-      return 0.0
-    curr_pos += step
-  return uncertainty
 
 class SimpleLaser(object):
   def __init__(self, name):
@@ -157,26 +142,6 @@ class GroundtruthPose(object):
   @property
   def pose(self):
     return self._pose
-
-  def pose_with_uncertainty(self, observer_poses, obstacle_map):
-    uncertainties = np.array([check_line_of_sight(observer_pose[:2], self.pose[:2], obstacle_map) for observer_pose in observer_poses])
-    if len(uncertainties) == 0:
-      return (self.pose, 0)
-    raw_uncertainty = np.amax(uncertainties) # 1 for certain, 0 for no knowledge
-    return (self.pose, raw_uncertainty)
-
-
-  def observed_pose(self, observer_poses, obstacle_map):
-    true_pose, uncertainty = self.pose_with_uncertainty(observer_poses, obstacle_map)
-    if uncertainty < 1e-3:
-      return (np.zeros_like(true_pose), float('inf'))
-    if uncertainty > 1 - 1e-3:
-      return (true_pose, 0.0)
-    new_pose = true_pose.copy()
-    variance = 1.0 / uncertainty - 1.0
-    new_pose[:2] = np.random.normal(new_pose[:2], variance)
-    #print("TP: ", true_pose, ", resampled to: ", new_pose)
-    return (new_pose, variance)
   
 
 def run(args):

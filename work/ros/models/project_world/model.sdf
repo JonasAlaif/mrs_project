@@ -7,7 +7,7 @@
       <collision name="Wall_0_0_Collision">
         <geometry>
           <box>
-            <size>1.0 18.0 0.5</size>
+            <size>1.0 18.3333333333 0.5</size>
           </box>
         </geometry>
         <pose frame="">0 0 0 0 -0 0</pose>
@@ -16,48 +16,20 @@
         <pose frame="">0 0 0 0 -0 0</pose>
         <geometry>
           <box>
-            <size>1.0 18.0 0.5</size>
+            <size>1.0 18.3333333333 0.5</size>
           </box>
         </geometry>
         <material>
           <ambient>1 1 1 1</ambient>
         </material>
       </visual>
-      <pose frame="">-8.5 0.0 0.25 0 -0 0</pose>
-    </link>
-    <link name="Corner_0_0">
-      <collision name="Corner_0_0_Collision">
-        <geometry>
-          <polyline>
-            <point>0 0</point>
-            <point>0.5 0</point>
-            <point>0 0.5</point>
-            <height>0.5</height>
-          </polyline>
-        </geometry>
-        <pose frame="">0 0 0 0 -0 0</pose>
-      </collision>
-      <visual name="Corner_0_0_Visual">
-        <pose frame="">0 0 0 0 -0 0</pose>
-        <geometry>
-          <polyline>
-            <point>0 0</point>
-            <point>0.5 0</point>
-            <point>0 0.5</point>
-            <height>0.5</height>
-          </polyline>
-        </geometry>
-        <material>
-          <ambient>1 1 1 1</ambient>
-        </material>
-      </visual>
-      <pose frame="">-8 -8 0 0 -0 0</pose>
+      <pose frame="">-8.66666666667 0.0 0.25 0 -0 0</pose>
     </link>
     <link name="Wall_0_1">
       <collision name="Wall_0_1_Collision">
         <geometry>
           <box>
-            <size>18.0 1.0 0.5</size>
+            <size>18.3333333333 1.0 0.5</size>
           </box>
         </geometry>
         <pose frame="">0 0 0 0 -0 0</pose>
@@ -66,48 +38,20 @@
         <pose frame="">0 0 0 0 -0 0</pose>
         <geometry>
           <box>
-            <size>18.0 1.0 0.5</size>
+            <size>18.3333333333 1.0 0.5</size>
           </box>
         </geometry>
         <material>
           <ambient>1 1 1 1</ambient>
         </material>
       </visual>
-      <pose frame="">0.0 -8.5 0.25 0 -0 0</pose>
-    </link>
-    <link name="Corner_0_1">
-      <collision name="Corner_0_1_Collision">
-        <geometry>
-          <polyline>
-            <point>0 0</point>
-            <point>0.5 0</point>
-            <point>0 -0.5</point>
-            <height>0.5</height>
-          </polyline>
-        </geometry>
-        <pose frame="">0 0 0 0 -0 0</pose>
-      </collision>
-      <visual name="Corner_0_1_Visual">
-        <pose frame="">0 0 0 0 -0 0</pose>
-        <geometry>
-          <polyline>
-            <point>0 0</point>
-            <point>0.5 0</point>
-            <point>0 -0.5</point>
-            <height>0.5</height>
-          </polyline>
-        </geometry>
-        <material>
-          <ambient>1 1 1 1</ambient>
-        </material>
-      </visual>
-      <pose frame="">-8 8 0 0 -0 0</pose>
+      <pose frame="">0.0 -8.66666666667 0.25 0 -0 0</pose>
     </link>
     <link name="Wall_1_0">
       <collision name="Wall_1_0_Collision">
         <geometry>
           <box>
-            <size>18.0 1.0 0.5</size>
+            <size>18.3333333333 1.0 0.5</size>
           </box>
         </geometry>
         <pose frame="">0 0 0 0 -0 0</pose>
@@ -116,114 +60,36 @@
         <pose frame="">0 0 0 0 -0 0</pose>
         <geometry>
           <box>
-            <size>18.0 1.0 0.5</size>
+            <size>18.3333333333 1.0 0.5</size>
           </box>
         </geometry>
         <material>
           <ambient>1 1 1 1</ambient>
         </material>
       </visual>
-      <pose frame="">0.0 8.5 0.25 0 -0 0</pose>
+      <pose frame="">0.0 8.66666666667 0.25 0 -0 0</pose>
     </link>
-    <link name="Corner_1_0">
-      <collision name="Corner_1_0_Collision">
-        <geometry>
-          <polyline>
-            <point>0 0</point>
-            <point>-0.5 0</point>
-            <point>0 0.5</point>
-            <height>0.5</height>
-          </polyline>
-        </geometry>
-        <pose frame="">0 0 0 0 -0 0</pose>
-      </collision>
-      <visual name="Corner_1_0_Visual">
-        <pose frame="">0 0 0 0 -0 0</pose>
-        <geometry>
-          <polyline>
-            <point>0 0</point>
-            <point>-0.5 0</point>
-            <point>0 0.5</point>
-            <height>0.5</height>
-          </polyline>
-        </geometry>
-        <material>
-          <ambient>1 1 1 1</ambient>
-        </material>
-      </visual>
-      <pose frame="">8 -8 0 0 -0 0</pose>
-    </link>
-    <link name="Wall_1_1_1">
-      <collision name="Wall_1_1_1_Collision">
+    <link name="Wall_1_1">
+      <collision name="Wall_1_1_Collision">
         <geometry>
           <box>
-            <size>1 7.5 0.5</size>
+            <size>1.0 18.3333333333 0.5</size>
           </box>
         </geometry>
         <pose frame="">0 0 0 0 -0 0</pose>
       </collision>
-      <visual name="Wall_1_1_1_Visual">
+      <visual name="Wall_1_1_Visual">
         <pose frame="">0 0 0 0 -0 0</pose>
         <geometry>
           <box>
-            <size>1 7.5 0.5</size>
+            <size>1.0 18.3333333333 0.5</size>
           </box>
         </geometry>
         <material>
           <ambient>1 1 1 1</ambient>
         </material>
       </visual>
-      <pose frame="">8.5 -5.0 0.25 0 -0 0</pose>
-    </link>
-    <link name="Wall_1_1_2">
-      <collision name="Wall_1_1_2_Collision">
-        <geometry>
-          <box>
-            <size>1 7.5 0.5</size>
-          </box>
-        </geometry>
-        <pose frame="">0 0 0 0 -0 0</pose>
-      </collision>
-      <visual name="Wall_1_1_2_Visual">
-        <pose frame="">0 0 0 0 -0 0</pose>
-        <geometry>
-          <box>
-            <size>1 7.5 0.5</size>
-          </box>
-        </geometry>
-        <material>
-          <ambient>1 1 1 1</ambient>
-        </material>
-      </visual>
-      <pose frame="">8.5 5.0 0.25 0 -0 0</pose>
-    </link>
-    <link name="Corner_1_1">
-      <collision name="Corner_1_1_Collision">
-        <geometry>
-          <polyline>
-            <point>0 0</point>
-            <point>-0.5 0</point>
-            <point>0 -0.5</point>
-            <height>0.5</height>
-          </polyline>
-        </geometry>
-        <pose frame="">0 0 0 0 -0 0</pose>
-      </collision>
-      <visual name="Corner_1_1_Visual">
-        <pose frame="">0 0 0 0 -0 0</pose>
-        <geometry>
-          <polyline>
-            <point>0 0</point>
-            <point>-0.5 0</point>
-            <point>0 -0.5</point>
-            <height>0.5</height>
-          </polyline>
-        </geometry>
-        <material>
-          <ambient>1 1 1 1</ambient>
-        </material>
-      </visual>
-      <pose frame="">8 8 0 0 -0 0</pose>
+      <pose frame="">8.66666666667 0.0 0.25 0 -0 0</pose>
     </link>
     <link name="Box_-6_-6">
       <collision name="Box_-6_-6_Collision">

@@ -10,16 +10,16 @@ import yaml
 import os
 import re
 from scipy.ndimage.filters import minimum_filter
+import noise
 
 # Constants used for indexing.
 X = 0
 Y = 1
 YAW = 2
 
-WALL_OFFSET = 8.7
-GOAL_POSITION = np.array([9, 0], dtype=np.float32)
-START_POSITION = np.array([-7.5, 5.35], dtype=np.float32)
-START_POSITION_2 = np.array([-7.5, 7.5], dtype=np.float32)
+WALL_OFFSET = 8.5
+GOAL_POSITION = np.array([1.5, -1.5], dtype=np.float32)
+START_POSITION = np.array([-7.5, 0], dtype=np.float32)
 MAX_SPEED = 2.
 
 ROBOT_RADIUS = 0.105 / 2.
@@ -42,24 +42,19 @@ def get_velocity_to_reach_goal(position, goal_position):
 
 def get_velocity_to_avoid_positions(position, other_positions):
   v = np.zeros(2, dtype=np.float32)
-  sum_weight = 0.0
-  for (other_pos, weight) in other_positions:
-    sum_weight += weight
+  for other_pos in other_positions:
     from_other = position - other_pos
     from_other_magnitude = np.linalg.norm(from_other)
-    from_other_right = np.array((from_other[1], -from_other[0]))
     if from_other_magnitude < 1e-3:
       continue
     # Normalise velocity to be <= MAX_SPEED
-    from_other_unit = (from_other + from_other_right * .1) / (from_other_magnitude * 1.1)
-    dropoff = max(1, from_other_magnitude - 4.0)
-    away_speed = weight * from_other_unit / dropoff
-    v += away_speed
-  v_magnitude = np.linalg.norm(v)
-  if v_magnitude < 1e-3:
-      return v
-  avg_weight = sum_weight / len(other_positions)
-  return MAX_SPEED * sigmoid(v_magnitude / MAX_SPEED) * v / v_magnitude * avg_weight
+    from_other_unit = from_other / from_other_magnitude
+    dropoff = max(1, from_other_magnitude / 8.0)
+    away_speed = MAX_SPEED * from_other_unit / dropoff
+    perlin = np.array([noise.pnoise2(position[0], position[1]), noise.pnoise2(position[0], position[1], base=1)])
+    v += 3./4. * away_speed + 1./4. * MAX_SPEED * perlin
+
+  return v
 
 def get_velocity_to_avoid_obstacles(position, obstacle_map):
   v = np.zeros(2, dtype=np.float32)
@@ -106,14 +101,17 @@ class ObstacleMap(object):
 
     # Inflate obstacles (using a convolution).
     res_inv = 1.0 / resolution
-    occupancy_map = values.copy()
+    blurred_map = values.copy()
     w = 2 * int(ROBOT_RADIUS / resolution) + 1
-    self._occupancy_map = minimum_filter(occupancy_map, w)
-
-    blurred_map = self._occupancy_map.copy()
-    sig_1 = int(res_inv / 4)
+    blurred_map = minimum_filter(blurred_map, w)
+    sig_1 = int(res_inv / 2)
     blurred_map = gaussian_filter(blurred_map, sigma=sig_1)
-    self._blurred_map = np.multiply(blurred_map, values)
+    blurred_map = np.multiply(blurred_map, values)
+    sig_2 = int(res_inv / 4)
+    blurred_map = gaussian_filter(blurred_map, sigma=sig_2)
+    blurred_map = np.multiply(blurred_map, values)
+    sig_3 = int(res_inv / 8)
+    self._blurred_map = gaussian_filter(blurred_map, sigma=sig_3)
     gx, gy = np.gradient(self._blurred_map * res_inv * 2)
     self._values = np.stack([gx, gy], axis=-1)
     
@@ -166,12 +164,6 @@ class ObstacleMap(object):
   def get_gradient(self, position):
     return self._values[self.get_index(position)]
 
-  def get_visibility(self, position):
-    return self._blurred_map[self.get_index(position)]
-
-  def get_occupancy(self, position):
-    return self._occupancy_map[self.get_index(position)] > 0.5
-
 
 def read_pgm(filename, byteorder='>'):
   """Read PGM file."""
@@ -208,13 +200,12 @@ def display_obst_map(obstacle_map, mode='all'):
   obstacle_map.draw()
   #obstacle_map.draw_avoidance()
   
-  plt.scatter(START_POSITION_2[X], START_POSITION_2[Y], s=10, marker='o', color='green', zorder=1000)
   plt.scatter(START_POSITION[X], START_POSITION[Y], s=10, marker='o', color='green', zorder=1000)
   plt.scatter(GOAL_POSITION[X], GOAL_POSITION[Y], s=10, marker='o', color='red', zorder=1000)
 
   # Plot field.
-  Xs, Ys = np.meshgrid(np.linspace(-WALL_OFFSET, WALL_OFFSET, 60),
-                     np.linspace(-WALL_OFFSET, WALL_OFFSET, 60))
+  Xs, Ys = np.meshgrid(np.linspace(-WALL_OFFSET, WALL_OFFSET, 30),
+                     np.linspace(-WALL_OFFSET, WALL_OFFSET, 30))
   U = np.zeros_like(Xs)
   V = np.zeros_like(Xs)
   for i in range(len(Xs)):
@@ -228,20 +219,13 @@ def display_obst_map(obstacle_map, mode='all'):
   # Uses Euler integration.
   dt = 0.01
   x = START_POSITION
-  x_2 = START_POSITION_2
   positions = [x]
-  positions_2 = [x_2]
-  for t in np.arange(0., 17., dt):
-    v = get_velocity(x, GOAL_POSITION, [(x_2, 0.8)], obstacle_map, mode)
-    v_2 = get_velocity(x_2, GOAL_POSITION, [(x, 0.8)], obstacle_map, mode)
+  for t in np.arange(0., 40., dt):
+    v = get_velocity(x, GOAL_POSITION, [], obstacle_map, mode)
     x = x + v * dt
-    x_2 = x_2 + v_2 * dt
     positions.append(x)
-    positions_2.append(x_2)
   positions = np.array(positions)
-  positions_2 = np.array(positions_2)
   plt.plot(positions[:, 0], positions[:, 1], lw=2, c='r')
-  plt.plot(positions_2[:, 0], positions_2[:, 1], lw=2, c='b')
 
   plt.axis('equal')
   plt.xlabel('x')
@@ -253,7 +237,7 @@ def display_obst_map(obstacle_map, mode='all'):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Runs obstacle avoidance with a potential field')
   parser.add_argument('--mode', action='store', default='all', help='Which velocity field to plot.', choices=['obstacle', 'goal', 'all'])
-  parser.add_argument('--map', action='store', default='map_city_3', help='Which map to use.')
+  parser.add_argument('--map', action='store', default='map_city_2', help='Which map to use.')
   args, unknown = parser.parse_known_args()
 
   obstacle_map = initialize(args.map)
