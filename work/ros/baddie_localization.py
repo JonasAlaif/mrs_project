@@ -29,6 +29,8 @@ from std_msgs.msg import Header
 # Odometry.
 from nav_msgs.msg import Odometry
 
+W_MAX = 2.84 #rad/s
+U_MAX = 0.22 #m/s
 
 # Constants used for indexing.
 X = 0
@@ -67,12 +69,40 @@ class Particle(object):
   def move(self, dt):
     delta_pose = np.array([0, 0, 0])
 
-    self._pose += delta_pose
-    #test
+    u =  np.random.random_sample()*(U_MAX*2) - U_MAX
+    w =  np.random.random_sample()*(W_MAX*2) - W_MAX
+
+    delta_pose[X] = u * dt
+    delta_pose[Y] = 0.
+    delta_pose[YAW] = w * dt
+
+    forward_vel = np.abs(delta_pose[X])
+    rot_vel = np.abs(delta_pose[YAW])
+    world_delta_pose = delta_pose.copy()
+
+    # Apply motion model
+    if forward_vel > 0:
+      world_delta_pose[X] = np.random.normal(world_delta_pose[X], forward_vel * self._weight)
+      world_delta_pose[Y] = np.random.normal(world_delta_pose[Y], forward_vel * self._weight)
+    if rot_vel > 0:
+      world_delta_pose[YAW] = np.random.normal(world_delta_pose[YAW], rot_vel * self._weight)
+
+    # Transform to world coords
+    predicted_yaw = self._pose[YAW] + world_delta_pose[YAW] / 2
+    s, c = np.sin(predicted_yaw), np.cos(predicted_yaw)
+    rot_mat = np.array(((c, -s), (s, c)))
+    world_delta_pose[0:2] = np.matmul(rot_mat, delta_pose[0:2])
+
+    self._pose += world_delta_pose
+    
 
   def compute_weight(self, measured_pose, variance, occupancy_grid):
-
-    self._weight = 1
+    if not self.is_valid(occupancy_grid):
+	self._weight = 0
+    else:
+	prob = normal.pdf(self._pose, measured_pose, np.sqrt(variance))
+        self._weight = prob  
+        #self._weight = 1/prob 
 
 
 particle_publisher = None
