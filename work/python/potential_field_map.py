@@ -115,6 +115,12 @@ class ObstacleMap(object):
     blurred_map = gaussian_filter(blurred_map, sigma=sig_1)
     self._blurred_map = np.multiply(blurred_map, values)
     gx, gy = np.gradient(self._blurred_map * res_inv * 2)
+
+    ggx = np.gradient(gx)[0]
+    ggy = np.gradient(gy)[1]
+    minima_in_x = np.argwhere(np.logical_and(np.abs(gx) < 0.2, ggx < -0.095))
+    minima_in_y = np.argwhere(np.logical_and(np.abs(gy) < 0.2, ggy < -0.095))
+    self._minima = np.concatenate((minima_in_x, minima_in_y), axis=0)
     self._values = np.stack([gx, gy], axis=-1)
     
     self._origin = np.array(origin[:2], dtype=np.float32)
@@ -125,6 +131,10 @@ class ObstacleMap(object):
   @property
   def values(self):
     return self._values
+
+  @property
+  def minima(self):
+    return self._minima
 
   @property
   def resolution(self):
@@ -207,7 +217,7 @@ def display_obst_map(obstacle_map, mode='all'):
   fig, ax = plt.subplots()
   obstacle_map.draw()
   #obstacle_map.draw_avoidance()
-  
+
   plt.scatter(START_POSITION_2[X], START_POSITION_2[Y], s=10, marker='o', color='green', zorder=1000)
   plt.scatter(START_POSITION[X], START_POSITION[Y], s=10, marker='o', color='green', zorder=1000)
   plt.scatter(GOAL_POSITION[X], GOAL_POSITION[Y], s=10, marker='o', color='red', zorder=1000)
@@ -242,6 +252,12 @@ def display_obst_map(obstacle_map, mode='all'):
   positions_2 = np.array(positions_2)
   plt.plot(positions[:, 0], positions[:, 1], lw=2, c='r')
   plt.plot(positions_2[:, 0], positions_2[:, 1], lw=2, c='b')
+  '''
+  minima = np.array([obstacle_map.get_position(min[X], min[Y]) for min in obstacle_map.minima])
+  min_xs = minima[:, 0]
+  min_ys = minima[:, 1]
+  plt.scatter(min_xs, min_ys, s=1, lw=0.5, color='blue')
+  '''
 
   plt.axis('equal')
   plt.xlabel('x')
