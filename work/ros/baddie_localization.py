@@ -92,7 +92,7 @@ class Particle(object):
       world_delta_pose[YAW] = np.random.normal(world_delta_pose[YAW], rot_vel * self._weight)
 
     # Transform to world coords
-    predicted_yaw = self._pose[YAW] + world_delta_pose[YAW] / 2
+    predicted_yaw = self._pose[YAW] + world_delta_pose[YAW] / 40
     s, c = np.sin(predicted_yaw), np.cos(predicted_yaw)
     rot_mat = np.array(((c, -s), (s, c)))
     world_delta_pose[0:2] = np.matmul(rot_mat, delta_pose[0:2])
@@ -102,14 +102,31 @@ class Particle(object):
 
   def compute_weight(self, measured_pose, variance, occupancy_grid):
     if not self.is_valid(occupancy_grid):
-	self._weight = 0.1
+	self._weight = 0.0001
     else:
-	print("mp: ", measured_pose, " self_pose: ", self._pose) 
-	prob = norm.cdf(self._pose, measured_pose, np.sqrt(variance))
-        a= np.abs(np.prod(prob))
-        print("weight updated to: ", a)
-        self._weight = a
-        #self._weight = 1/prob 
+	weights = np.zeros(5, dtype=np.float32)
+
+    	sigma = np.sqrt(variance)
+    	robot_measurements = measured_pose
+    	particle_measurements = self._pose
+
+        non_infs, infs = robot_measurements != float('inf'), robot_measurements == float('inf')
+        # Probability that my measurement corresponds to actual measurement according to model
+        weights[non_infs] = norm.pdf(particle_measurements[non_infs], robot_measurements[non_infs], sigma)
+        # Probability that my measurement would show up as inf
+        # For particle_measurements > 3.5 => weight > 0.5 (when robot_measurements == inf)
+        weights[infs] = 1 - norm.cdf(3.5, particle_measurements[infs], sigma)
+
+        # Probability that I am the right hypothesis
+        # Add 1 to weights such that a very low weight doesn't instantly kill me
+        self._weight = np.prod(weights+1)-0.99
+        # Alternate weighing of Squared Error - a few very good measurements important here:
+        # self._weight = np.sum(weights ** 2)
+	
+
+        print("mp: ", measured_pose, " self_pose: ", self._pose) 
+        print("weight updated to: ", self._weight)
+        
 
 
 particle_publisher = None
