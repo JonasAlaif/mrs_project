@@ -67,24 +67,28 @@ class Particle(object):
 
 
   def move(self, dt):
-    delta_pose = np.array([0, 0, 0])
+    delta_pose = np.zeros(3, dtype=np.float32)
 
     u =  np.random.random_sample()*(U_MAX*2) - U_MAX
     w =  np.random.random_sample()*(W_MAX*2) - W_MAX
+    #print("u, w",u, w)
 
-    delta_pose[X] = u * dt
-    delta_pose[Y] = 0.
-    delta_pose[YAW] = w * dt
+    delta_pose[X] += u * dt
+    delta_pose[Y] += 0
+    delta_pose[YAW] += w * dt
 
-    forward_vel = np.abs(delta_pose[X])
-    rot_vel = np.abs(delta_pose[YAW])
+    forward_vel = np.abs(delta_pose[X])+0.01
+    rot_vel = np.abs(delta_pose[YAW])+0.01
+    #print("f, r",forward_vel, rot_vel)
     world_delta_pose = delta_pose.copy()
 
     # Apply motion model
     if forward_vel > 0:
+      #print("forward", forward_vel, self._weight, forward_vel * self._weight)
       world_delta_pose[X] = np.random.normal(world_delta_pose[X], forward_vel * self._weight)
       world_delta_pose[Y] = np.random.normal(world_delta_pose[Y], forward_vel * self._weight)
     if rot_vel > 0:
+      #print(rot_vel, self._weight, rot_vel * self._weight)
       world_delta_pose[YAW] = np.random.normal(world_delta_pose[YAW], rot_vel * self._weight)
 
     # Transform to world coords
@@ -98,10 +102,13 @@ class Particle(object):
 
   def compute_weight(self, measured_pose, variance, occupancy_grid):
     if not self.is_valid(occupancy_grid):
-	self._weight = 0
+	self._weight = 0.1
     else:
-	prob = normal.pdf(self._pose, measured_pose, np.sqrt(variance))
-        self._weight = prob  
+	print("mp: ", measured_pose, " self_pose: ", self._pose) 
+	prob = norm.cdf(self._pose, measured_pose, np.sqrt(variance))
+        a= np.abs(np.prod(prob))
+        print("weight updated to: ", a)
+        self._weight = a
         #self._weight = 1/prob 
 
 
@@ -137,7 +144,7 @@ def update_particles(particles, dt, measured_pose, variance, num_particles, occu
         j = num_particles - 1
       current_boundary = current_boundary + particles[j].weight
     new_particles.append(copy.deepcopy(particles[j]))
-  '''
+  
   # Publish particles.
   particle_msg = PointCloud()
   particle_msg.header.seq = frame_id
@@ -155,7 +162,7 @@ def update_particles(particles, dt, measured_pose, variance, num_particles, occu
     intensity_channel.values.append(p.weight)
   particle_publisher.publish(particle_msg)
   frame_id += 1
-  '''
+  
   return new_particles
 
 '''

@@ -50,7 +50,7 @@ obstacle_map = None
 
 def initialize():
   global obstacle_map
-  obstacle_map = potential_field_map.initialize('/home/jonas/catkin_ws/src/mrs_project/work/python/map_city_3')
+  obstacle_map = potential_field_map.initialize('/home/ravi/catkin_ws/src/mrs_project/work/python/map_city_3')
   #potential_field_map.display_obst_map(obstacle_map)
   return obstacle_map
 
