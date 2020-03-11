@@ -106,7 +106,11 @@ class Particle(object):
     elif(variance == float('inf')):
         self._weight = 1
     else:
+<<<<<<< HEAD
 		
+=======
+
+>>>>>>> scratch-jonas
 	weights = np.zeros(3, dtype=np.float32)
 
     	sigma = np.sqrt(variance)
