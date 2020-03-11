@@ -101,9 +101,12 @@ class Particle(object):
     
 
   def compute_weight(self, measured_pose, variance, occupancy_grid):
-    if self.is_valid(occupancy_grid) ==2:
-	self._weight = 0.0001
+    if not self.is_valid(occupancy_grid):
+	self._weight = 0
+    elif(variance == float('inf')):
+        self._weight = 1
     else:
+		
 	weights = np.zeros(3, dtype=np.float32)
 
     	sigma = np.sqrt(variance)
@@ -112,10 +115,10 @@ class Particle(object):
 
         
         weights = norm.pdf(particle_measurements, robot_measurements, sigma)
-        self._weight = np.prod(weights+1)
+        self._weight = np.prod(weights+1) -1
 	
 
-        print("mp: ", measured_pose, " self_pose: ", self._pose) 
+        print("mp: ", measured_pose, " var: ", variance," self_pose: ", self._pose) 
         print("weight updated to: ", self._weight)
         
 

@@ -91,7 +91,7 @@ def run(args):
   police = dict()
   baddies = dict()
   baddies_particles = dict()
-  num_particles = 1
+  num_particles = 50
   curr_time = rospy.get_time()
 
   # this will be a dictionary indexed on the robot name which gives you back the 3-tuple
