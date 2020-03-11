@@ -29,8 +29,9 @@ from std_msgs.msg import Header
 # Odometry.
 from nav_msgs.msg import Odometry
 
-W_MAX = 2.84 #rad/s
-U_MAX = 0.22 #m/s
+W_MAX = 0.5 #rad/s
+U_MAX = 0.2 #m/s
+MAP_SIZE = 8.0
 
 # Constants used for indexing.
 X = 0
@@ -42,7 +43,7 @@ class Particle(object):
   """Represents a particle."""
 
   def __init__(self):
-    self._pose = None
+    self._pose = []
     self._weight = 1.
     self._ready = False
 
@@ -63,63 +64,40 @@ class Particle(object):
     self._ready = True
 
   def is_valid(self, occupancy_grid):
-    return occupancy_grid.get_occupancy(self._pose[:2])
+    not_in_obstacle = occupancy_grid.get_occupancy(self.pose[:2])
+    in_bounds = np.abs(self.pose[X]) < MAP_SIZE and np.abs(self.pose[Y]) < MAP_SIZE
+    return not_in_obstacle and in_bounds
 
 
   def move(self, dt):
     delta_pose = np.zeros(3, dtype=np.float32)
 
-    u =  np.random.random_sample()*(U_MAX*2) - U_MAX
-    w =  np.random.random_sample()*(W_MAX*2) - W_MAX
-    #print("u, w",u, w)
+    u = U_MAX * np.random.random_sample()
+    w = 2 * W_MAX * np.random.random_sample() - W_MAX
 
-    delta_pose[X] += u * dt
-    delta_pose[Y] += 0
-    delta_pose[YAW] += w * dt
+    delta_pose[X] = u * np.cos(self.pose[YAW]) * dt
+    delta_pose[Y] = u * np.sin(self.pose[YAW]) * dt
+    delta_pose[YAW] = w * dt
 
-    forward_vel = np.abs(delta_pose[X])+0.01
-    rot_vel = np.abs(delta_pose[YAW])+0.01
-    #print("f, r",forward_vel, rot_vel)
-    world_delta_pose = delta_pose.copy()
-
-    # Apply motion model
-    if forward_vel > 0:
-      #print("forward", forward_vel, self._weight, forward_vel * self._weight)
-      world_delta_pose[X] = np.random.normal(world_delta_pose[X], forward_vel * self._weight)
-      world_delta_pose[Y] = np.random.normal(world_delta_pose[Y], forward_vel * self._weight)
-    if rot_vel > 0:
-      #print(rot_vel, self._weight, rot_vel * self._weight)
-      world_delta_pose[YAW] = np.random.normal(world_delta_pose[YAW], rot_vel * self._weight)
-
-    # Transform to world coords
-    predicted_yaw = self._pose[YAW] + world_delta_pose[YAW] / 40
-    s, c = np.sin(predicted_yaw), np.cos(predicted_yaw)
-    rot_mat = np.array(((c, -s), (s, c)))
-    world_delta_pose[0:2] = np.matmul(rot_mat, delta_pose[0:2])
-
-    self._pose += world_delta_pose
+    self._pose += delta_pose
     
 
-  def compute_weight(self, measured_pose, variance, occupancy_grid):
+  def compute_weight(self, measured_pose, scale, occupancy_grid):
     if not self.is_valid(occupancy_grid):
-	self._weight = 0
-    elif(variance == float('inf')):
-        self._weight = 1
-    else:
+      self._weight = 0
+      return
+    if scale == float('inf'):
+      self._weight = 1
+      return
+    
+    if scale == 0:
+      scale = 1e-6
+    weights = np.zeros(2, dtype=np.float32)
+    weights = norm.pdf(self.pose[:2], measured_pose[:2], scale)
+    self._weight = np.prod(weights)
 
-	weights = np.zeros(3, dtype=np.float32)
-
-    	sigma = np.sqrt(variance)
-    	robot_measurements = measured_pose
-    	particle_measurements = self._pose
-
-        
-        weights = norm.pdf(particle_measurements, robot_measurements, sigma)
-        self._weight = np.prod(weights+1) -1
-	
-
-        print("mp: ", measured_pose, " var: ", variance," self_pose: ", self._pose) 
-        print("weight updated to: ", self._weight)
+    #print("mp: ", measured_pose, " var: ", variance," self_pose: ", self._pose) 
+    #print("weight updated to: ", self._weight)
         
 
 
@@ -131,15 +109,12 @@ def initialize():
   particle_publisher = rospy.Publisher('/particles', PointCloud, queue_size=1)
   frame_id = 0
 
-def update_particles(particles, dt, measured_pose, variance, num_particles, occupancy_grid):
-  global particle_publisher
-  global frame_id
-
+def update_particles(particles, dt, measured_pose, scale, num_particles, occupancy_grid):
   # Update particle positions and weights.
   total_weight = 0.
   for i, p in enumerate(particles):
     p.move(dt)
-    p.compute_weight(measured_pose, variance, occupancy_grid)
+    p.compute_weight(measured_pose, scale, occupancy_grid)
     total_weight += p.weight
 
   # Low variance re-sampling of particles.
@@ -155,7 +130,12 @@ def update_particles(particles, dt, measured_pose, variance, num_particles, occu
         j = num_particles - 1
       current_boundary = current_boundary + particles[j].weight
     new_particles.append(copy.deepcopy(particles[j]))
-  
+  return new_particles
+
+def publish_particles(particles):
+  global particle_publisher
+  global frame_id
+
   # Publish particles.
   particle_msg = PointCloud()
   particle_msg.header.seq = frame_id
@@ -173,8 +153,6 @@ def update_particles(particles, dt, measured_pose, variance, num_particles, occu
     intensity_channel.values.append(p.weight)
   particle_publisher.publish(particle_msg)
   frame_id += 1
-  
-  return new_particles
 
 '''
 def run(args):

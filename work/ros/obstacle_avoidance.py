@@ -173,10 +173,10 @@ class GroundtruthPose(object):
     if uncertainty > 1 - 1e-3:
       return (true_pose, 0.0)
     new_pose = true_pose.copy()
-    variance = 1.0 / uncertainty - 1.0
-    new_pose[:2] = np.random.normal(new_pose[:2], variance)
+    scale = 1.0 / uncertainty - 1.0
+    new_pose[:2] = np.random.normal(new_pose[:2], scale)
     #print("TP: ", true_pose, ", resampled to: ", new_pose)
-    return (new_pose, variance)
+    return (new_pose, scale)
   
 
 def run(args):

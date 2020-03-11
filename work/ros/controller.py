@@ -205,10 +205,14 @@ def run(args):
           particle.initialize(gtpose.pose)
       dt = new_time - curr_time
       baddies_particles[name] = baddie_localization.update_particles(b_particles, dt, police_observed_pose[0], police_observed_pose[1], num_particles, obstacle_map)
+    all_particles = [baddies_particles[name] for name in baddies.keys() if baddies[name][2].ready]
+    if len(all_particles) != 0:
+      baddie_localization.publish_particles(np.concatenate(all_particles))
     curr_time = new_time
 
     baddie_gtpose = baddies[target][2] if target is not None else None
     baddie_pose = baddie_gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map) if target is not None else None
+    baddie_particle_poses = np.array([(p.pose[:2], 1) for p in baddies_particles[target]]) if target is not None else []
     # update police navigation
     for name in police.keys():
       (pub, laser, gtpose) = police[name]
@@ -217,11 +221,11 @@ def run(args):
       del other_police[name]
       other_police_pos = [(pol[2].pose[:2], 0.5) for pol in other_police.values()]
       u, w = 0, 0
-      if baddie_pose != None and baddie_pose[1] > 0.1:
+      if len(baddie_particle_poses) != 0 and len(baddie_particle_poses[0][0]) != 0:
         u, w = police_navigation.navigate_police_2(name,
                                                gtpose,
                                                laser,
-                                               baddie_pose[0],
+                                               baddie_particle_poses,
                                                client_path_tuples,
                                                occupancy_grid_base,
                                                MAX_ITERATIONS, other_police_pos)
@@ -243,10 +247,11 @@ def run(args):
                                                occupancy_grid,
                                                MAX_ITERATIONS)'''
       police_pos = [(pol[2].pose[:2], 1.6) for pol in police.values()]
+      goal_pos = np.array([(goal[:2], 1)])
       u, w = police_navigation.navigate_police_2(name,
                                                gtpose,
                                                laser,
-                                               goal,
+                                               goal_pos,
                                                client_path_tuples,
                                                occupancy_grid_base,
                                                MAX_ITERATIONS, police_pos)
