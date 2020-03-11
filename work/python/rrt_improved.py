@@ -193,7 +193,7 @@ def calc_cost(parent, child_pos, police):
     #print('pol_dist: ', police_distance)
   #police_distance = 0 # TODO calculate
   # don't actually know if this works properly
-  return parent.cost + dist + 10/(police_distance)
+  return parent.cost + dist + (10/(police_distance))**2
 
 # TODO rewrite this (currently just copy-pasted from https://gist.github.com/nim65s/5e9902cd67f094ce65b0)
 def seg_dist(A, B, P):
