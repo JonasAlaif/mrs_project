@@ -35,7 +35,7 @@ import rrt
 import potential_field_map
 
 MAX_ITERATIONS = 1500
-EPSILON = 0.1
+EPSILON = 0.15
 
 X = 0
 Y = 1

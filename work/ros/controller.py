@@ -42,8 +42,8 @@ FREE = 0
 UNKNOWN = 1
 OCCUPIED = 2
 
-MAX_ITERATIONS = 1500
-EPSILON = 0.1
+MAX_ITERATIONS = 2000
+EPSILON = 0.15
 
 X = 0
 Y = 1
@@ -71,9 +71,9 @@ def run(args):
     occupancy_grid_base[img < .1] = OCCUPIED
     occupancy_grid_base[img > .9] = FREE
     # Transpose (undo ROS processing).
-    occupancy_grid_base = occupancy_grid_base.T
+    #occupancy_grid_base = occupancy_grid_base.T
     # Invert Y-axis.
-    occupancy_grid_base = occupancy_grid_base[:, ::-1]
+    #occupancy_grid_base = occupancy_grid_base[:, ::-1]
     occupancy_grid_base = rrt.OccupancyGrid(occupancy_grid_base, filedata['origin'], filedata['resolution'])
 
 
@@ -199,10 +199,12 @@ def run(args):
 
     # pick a baddie for all the police to chase if there isn't already one
     if len(baddies.keys()) > 0 and target == None:
-      for name in random.sample(baddies.keys(), len(baddies.keys())):
+      #for name in random.sample(baddies.keys(), len(baddies.keys())):
+      for name in sorted(baddies.keys()):
         # TODO change baddie selection policy (closest/furthest/something else?)
         if baddies[name][2].ready:
           target = name
+          print('chose baddie', name, 'as target')
           break
       else:
         target = None
@@ -238,7 +240,7 @@ def run(args):
                                                laser,
                                                gtpose,
                                                client_path_tuples,
-                                               occupancy_grid,
+                                               occupancy_grid_base,
                                                MAX_ITERATIONS)'''
       other_baddies = dict(baddies)
       del other_baddies[name]
@@ -249,10 +251,10 @@ def run(args):
       class Struct(object): pass
       goal = Struct()
       goal.pose = EXIT_POSITION
-      u, w = baddie_navigation.navigate_baddie_pot_nai(name,
+      u, w = baddie_navigation.navigate_baddie_hybrid(name,
                                                laser,
                                                gtpose,
-                                               goal,
+                                               #goal,
                                                client_path_tuples,
                                                occupancy_grid_base,
                                                MAX_ITERATIONS,

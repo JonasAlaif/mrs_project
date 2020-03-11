@@ -1,0 +1,758 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <!--Generated City-->
+  <model name="city">
+    <pose frame="">0 0 0 0 -0 0</pose>
+    <link name="Wall_0_0">
+      <collision name="Wall_0_0_Collision">
+        <geometry>
+          <box>
+            <size>1.0 18.0 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Wall_0_0_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>1.0 18.0 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-8.5 0.0 0.25 0 -0 0</pose>
+    </link>
+    <link name="Corner_0_0">
+      <collision name="Corner_0_0_Collision">
+        <geometry>
+          <polyline>
+            <point>0 0</point>
+            <point>0.5 0</point>
+            <point>0 0.5</point>
+            <height>0.5</height>
+          </polyline>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Corner_0_0_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <polyline>
+            <point>0 0</point>
+            <point>0.5 0</point>
+            <point>0 0.5</point>
+            <height>0.5</height>
+          </polyline>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-8 -8 0 0 -0 0</pose>
+    </link>
+    <link name="Wall_0_1">
+      <collision name="Wall_0_1_Collision">
+        <geometry>
+          <box>
+            <size>18.0 1.0 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Wall_0_1_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>18.0 1.0 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">0.0 -8.5 0.25 0 -0 0</pose>
+    </link>
+    <link name="Corner_0_1">
+      <collision name="Corner_0_1_Collision">
+        <geometry>
+          <polyline>
+            <point>0 0</point>
+            <point>0.5 0</point>
+            <point>0 -0.5</point>
+            <height>0.5</height>
+          </polyline>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Corner_0_1_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <polyline>
+            <point>0 0</point>
+            <point>0.5 0</point>
+            <point>0 -0.5</point>
+            <height>0.5</height>
+          </polyline>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-8 8 0 0 -0 0</pose>
+    </link>
+    <link name="Wall_1_0">
+      <collision name="Wall_1_0_Collision">
+        <geometry>
+          <box>
+            <size>18.0 1.0 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Wall_1_0_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>18.0 1.0 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">0.0 8.5 0.25 0 -0 0</pose>
+    </link>
+    <link name="Corner_1_0">
+      <collision name="Corner_1_0_Collision">
+        <geometry>
+          <polyline>
+            <point>0 0</point>
+            <point>-0.5 0</point>
+            <point>0 0.5</point>
+            <height>0.5</height>
+          </polyline>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Corner_1_0_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <polyline>
+            <point>0 0</point>
+            <point>-0.5 0</point>
+            <point>0 0.5</point>
+            <height>0.5</height>
+          </polyline>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">8 -8 0 0 -0 0</pose>
+    </link>
+    <link name="Wall_1_1">
+      <collision name="Wall_1_1_Collision">
+        <geometry>
+          <box>
+            <size>1.0 18.0 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Wall_1_1_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>1.0 18.0 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">8.5 0.0 0.25 0 -0 0</pose>
+    </link>
+    <link name="Corner_1_1">
+      <collision name="Corner_1_1_Collision">
+        <geometry>
+          <polyline>
+            <point>0 0</point>
+            <point>-0.5 0</point>
+            <point>0 -0.5</point>
+            <height>0.5</height>
+          </polyline>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Corner_1_1_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <polyline>
+            <point>0 0</point>
+            <point>-0.5 0</point>
+            <point>0 -0.5</point>
+            <height>0.5</height>
+          </polyline>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">8 8 0 0 -0 0</pose>
+    </link>
+    <link name="Box_-6_-6">
+      <collision name="Box_-6_-6_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_-6_-6_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-6 -6 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_-6_-3">
+      <collision name="Box_-6_-3_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_-6_-3_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-6 -3 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_-6_0">
+      <collision name="Box_-6_0_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_-6_0_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-6 0 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_-6_3">
+      <collision name="Box_-6_3_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_-6_3_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-6 3 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_-6_6">
+      <collision name="Box_-6_6_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_-6_6_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-6 6 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_-3_-6">
+      <collision name="Box_-3_-6_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_-3_-6_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-3 -6 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_-3_-3">
+      <collision name="Box_-3_-3_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_-3_-3_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-3 -3 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_-3_0">
+      <collision name="Box_-3_0_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_-3_0_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-3 0 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_-3_3">
+      <collision name="Box_-3_3_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_-3_3_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-3 3 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_-3_6">
+      <collision name="Box_-3_6_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_-3_6_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">-3 6 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_0_-6">
+      <collision name="Box_0_-6_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_0_-6_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">0 -6 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_0_-3">
+      <collision name="Box_0_-3_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_0_-3_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">0 -3 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_0_0">
+      <collision name="Box_0_0_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_0_0_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">0 0 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_0_3">
+      <collision name="Box_0_3_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_0_3_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">0 3 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_0_6">
+      <collision name="Box_0_6_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_0_6_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">0 6 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_3_-6">
+      <collision name="Box_3_-6_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_3_-6_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">3 -6 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_3_-3">
+      <collision name="Box_3_-3_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_3_-3_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">3 -3 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_3_0">
+      <collision name="Box_3_0_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_3_0_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">3 0 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_3_3">
+      <collision name="Box_3_3_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_3_3_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">3 3 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_3_6">
+      <collision name="Box_3_6_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_3_6_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">3 6 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_6_-6">
+      <collision name="Box_6_-6_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_6_-6_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">6 -6 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_6_-3">
+      <collision name="Box_6_-3_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_6_-3_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">6 -3 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_6_0">
+      <collision name="Box_6_0_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_6_0_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">6 0 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_6_3">
+      <collision name="Box_6_3_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_6_3_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">6 3 0.25 0 -0 0</pose>
+    </link>
+    <link name="Box_6_6">
+      <collision name="Box_6_6_Collision">
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <pose frame="">0 0 0 0 -0 0</pose>
+      </collision>
+      <visual name="Box_6_6_Visual">
+        <pose frame="">0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>2 2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+        </material>
+      </visual>
+      <pose frame="">6 6 0.25 0 -0 0</pose>
+    </link>
+    <static>1</static>
+  </model>
+</sdf>

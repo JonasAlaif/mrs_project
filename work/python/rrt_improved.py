@@ -188,14 +188,14 @@ def rrt_nocircle(start_pose, goal_position, occupancy_grid, num_iterations=MAX_I
   graph = []
   start_node = Node(start_pose)
   final_nodes = []
-  if not occupancy_grid.is_free(goal_position):
+  if not occupancy_grid.is_free(goal_position[:2]):
     print('Goal position is not in the free space.')
     return start_node, None
   graph.append(start_node)
   for _ in range(num_iterations):
     # With a random chance, draw the goal position.
     if np.random.rand() < .05:
-      position = goal_position
+      position = goal_position[:2]
     else:
       position = sample_random_position(occupancy_grid)
     # Find closest (with respect to cost) node in graph.
@@ -221,7 +221,7 @@ def rrt_nocircle(start_pose, goal_position, occupancy_grid, num_iterations=MAX_I
     u.add_neighbor(v)
     v.parent = u
     graph.append(v)
-    if np.linalg.norm(v.position - goal_position) < .2:
+    if np.linalg.norm(v.position - goal_position[:2]) < .2:
       final_nodes.append(v)
       # Uncomment 'break' for reduced optimality but faster execution
       # Could potentially do a check that:

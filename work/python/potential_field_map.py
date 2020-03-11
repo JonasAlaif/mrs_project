@@ -44,7 +44,7 @@ def get_velocity_to_avoid_positions(position, other_positions):
   sum_weight = 0.0
   for (other_pos, weight) in other_positions:
     sum_weight += weight
-    from_other = position - other_pos
+    from_other = position[:2] - other_pos[:2]
     from_other_magnitude = np.linalg.norm(from_other)
     from_other_right = np.array((from_other[1], -from_other[0]))
     if from_other_magnitude < 1e-3:
@@ -81,7 +81,7 @@ def cap(v, max_speed):
 
 
 def get_velocity(position, goal_position, avoid_positions, obstacle_map, mode='all'):
-  if mode in ('goal', 'all'):
+  if mode in ('obstacle', 'goal', 'all'):
     v_goal = get_velocity_to_reach_goal(position, goal_position)
   else:
     v_goal = np.zeros(2, dtype=np.float32)
@@ -89,7 +89,7 @@ def get_velocity(position, goal_position, avoid_positions, obstacle_map, mode='a
     v_avoid = get_velocity_to_avoid_obstacles(position, obstacle_map)
   else:
     v_avoid = np.zeros(2, dtype=np.float32)
-  if mode in ('friendlies', 'obstacle', 'all'):
+  if mode in ('friendlies', 'all'):
     v_avoid_friends = get_velocity_to_avoid_positions(position, avoid_positions)
   else:
     v_avoid_friends = np.zeros(2, dtype=np.float32)
