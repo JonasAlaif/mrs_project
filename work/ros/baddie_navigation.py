@@ -150,7 +150,7 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
       if pause_srv is not None:
         pause_srv(EmptyRequest())
         print('paused')
-      start_node, end_node = rrt_improved.rrt_nocircle(gtpose.pose, goal, occupancy_grid, max_iterations)
+      start_node, end_node = rrt_improved.rrt_nocircle(gtpose.pose, goal, occupancy_grid, police, max_iterations)
       if unpause_srv is not None:
         unpause_srv(EmptyRequest())
         print('unpaused')
@@ -166,11 +166,12 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
         path = new_path
         print('path updated for', name)
 
-        ### Plot environment.
+        #pause_srv(EmptyRequest())
+        ## Plot environment.
         #fig, ax = plt.subplots()
         #occupancy_grid.draw()
         #plt.scatter(.3, .2, s=10, marker='o', color='green', zorder=1000)
-        #rrt_improved.draw_solution(start_node, end_node)
+        #rrt_improved.draw_solution(start_node, police, end_node)
         #plt.scatter(gtpose.pose[0], gtpose.pose[1], s=10, marker='o', color='green', zorder=1000)
         #plt.scatter(goal[0], goal[1], s=10, marker='o', color='red', zorder=1000)
 
@@ -180,7 +181,7 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
         #plt.xlim([-.5 - 2., 2. + .5])
         #plt.ylim([-.5 - 2., 2. + .5])
         #plt.show()
-        #time.sleep(5)
+        #unpause_srv(EmptyRequest())
       else:
         print(name, 'ground truth not ready for goal setting')
 
@@ -190,7 +191,7 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
                         gtpose.pose[Y] + EPSILON*np.sin(gtpose.pose[YAW]),
                         gtpose.pose[YAW]])
     dist = np.linalg.norm(lin_pos[:2] - path[0][:2])
-    print(dist)
+    #print(dist)
     if dist < 0.3:
       print('got close')
       print('gtpose', gtpose.pose[:2], 'next', path[0])

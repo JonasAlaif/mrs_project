@@ -182,8 +182,31 @@ class Node(object):
   def cost(self, c):
     self._cost = c
 
+def calc_cost(parent, child_pos, police):
+  dist = np.linalg.norm(parent.position - child_pos)
+  police_distance = float('inf')
+  for pol in police:
+    # TODO rewrite this (currently just copy-pasted from https://gist.github.com/nim65s/5e9902cd67f094ce65b0)
+    pol_d = seg_dist(parent.position, child_pos, pol[0])
+    if pol_d < police_distance:
+      police_distance = pol_d
+    #print('pol_dist: ', police_distance)
+  #police_distance = 0 # TODO calculate
+  # don't actually know if this works properly
+  return parent.cost + dist + 10/(police_distance)
 
-def rrt_nocircle(start_pose, goal_position, occupancy_grid, num_iterations=MAX_ITERATIONS):
+# TODO rewrite this (currently just copy-pasted from https://gist.github.com/nim65s/5e9902cd67f094ce65b0)
+def seg_dist(A, B, P):
+  """ segment line AB, point P, where each one is an array([x, y]) """
+  if all(A == P) or all(B == P):
+    return 0
+  if np.arccos(np.dot((P - A) / np.linalg.norm(P - A), (B - A) / np.linalg.norm(B - A))) > np.pi / 2:
+    return np.linalg.norm(P - A)
+  if np.arccos(np.dot((P - B) / np.linalg.norm(P - B), (A - B) / np.linalg.norm(A - B))) > np.pi / 2:
+    return np.linalg.norm(P - B)
+  return np.linalg.norm(np.cross(A-B, A-P))/np.linalg.norm(B-A)
+
+def rrt_nocircle(start_pose, goal_position, occupancy_grid, police, num_iterations=MAX_ITERATIONS):
   # RRT builds a graph one node at a time.
   graph = []
   start_node = Node(start_pose)
@@ -205,10 +228,11 @@ def rrt_nocircle(start_pose, goal_position, occupancy_grid, num_iterations=MAX_I
     min_cost = float('inf')
     u = None
     for (n, d) in potential_parents:
-      if min_cost > n.cost + d:
+      cost = calc_cost(n, position, police)
+      if min_cost > cost:
         # For the cost I use euclidean distance. It would be better to use the arc distance,
         # but then we would have to calulate arcs for each neighbour, which is more expensive
-        min_cost = n.cost + d
+        min_cost = cost
         u = n
     if u == None:
       #print('u is None')
@@ -341,27 +365,28 @@ def read_pgm(filename, byteorder='>'):
   return img.astype(np.float32) / 255.
 
 
-def draw_solution(start_node, final_node=None):
+def draw_solution(start_node, police, final_node=None):
   ax = plt.gca()
 
   def draw_path(u, v, arrow_length=.1, color=(.8, .8, .8), lw=1):
-    du = u.direction
-    plt.arrow(u.pose[X], u.pose[Y], du[0] * arrow_length, du[1] * arrow_length,
-              head_width=.05, head_length=.1, fc=color, ec=color)
-    dv = v.direction
-    plt.arrow(v.pose[X], v.pose[Y], dv[0] * arrow_length, dv[1] * arrow_length,
-              head_width=.05, head_length=.1, fc=color, ec=color)
-    center, radius = find_circle(u, v)
-    du = u.position - center
-    theta1 = np.arctan2(du[1], du[0])
-    dv = v.position - center
-    theta2 = np.arctan2(dv[1], dv[0])
-    # Check if the arc goes clockwise.
-    if np.cross(u.direction, du).item() > 0.:
-      theta1, theta2 = theta2, theta1
-    ax.add_patch(patches.Arc(center, radius * 2., radius * 2.,
-                             theta1=theta1 / np.pi * 180., theta2=theta2 / np.pi * 180.,
-                             color=color, lw=lw))
+    #du = u.direction
+    #plt.arrow(u.pose[X], u.pose[Y], du[0] * arrow_length, du[1] * arrow_length,
+    #          head_width=.05, head_length=.1, fc=color, ec=color)
+    #dv = v.direction
+    #plt.arrow(v.pose[X], v.pose[Y], dv[0] * arrow_length, dv[1] * arrow_length,
+    #          head_width=.05, head_length=.1, fc=color, ec=color)
+    #center, radius = find_circle(u, v)
+    #du = u.position - center
+    #theta1 = np.arctan2(du[1], du[0])
+    #dv = v.position - center
+    #theta2 = np.arctan2(dv[1], dv[0])
+    ## Check if the arc goes clockwise.
+    #if np.cross(u.direction, du).item() > 0.:
+    #  theta1, theta2 = theta2, theta1
+    #ax.add_patch(patches.Arc(center, radius * 2., radius * 2.,
+    #                         theta1=theta1 / np.pi * 180., theta2=theta2 / np.pi * 180.,
+    #                         color=color, lw=lw))
+    plt.arrow(u.pose[X], u.pose[Y], v.pose[X] - u.pose[X], v.pose[Y] - u.pose[Y], head_width = 0.05, head_length = 0.1, fc=color, ec=color)
 
   points = []
   s = [(start_node, None)]  # (node, parent).
@@ -376,6 +401,9 @@ def draw_solution(start_node, final_node=None):
     points.append(v.pose[:2])
     for w in v.neighbors:
       s.append((w, v))
+
+  for p in police:
+    plt.scatter(p[0][0], p[0][1], s=10, marker='o', color=[1, 0, 0])
 
   points = np.array(points)
   plt.scatter(points[:, 0], points[:, 1], s=10, marker='o', color=(.8, .8, .8))
