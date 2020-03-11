@@ -104,24 +104,18 @@ class Particle(object):
     if not self.is_valid(occupancy_grid):
 	self._weight = 0.0001
     else:
-	weights = np.zeros(5, dtype=np.float32)
+	weights = np.zeros(3, dtype=np.float32)
 
     	sigma = np.sqrt(variance)
     	robot_measurements = measured_pose
     	particle_measurements = self._pose
 
-        non_infs, infs = robot_measurements != float('inf'), robot_measurements == float('inf')
-        # Probability that my measurement corresponds to actual measurement according to model
-        weights[non_infs] = norm.pdf(particle_measurements[non_infs], robot_measurements[non_infs], sigma)
-        # Probability that my measurement would show up as inf
-        # For particle_measurements > 3.5 => weight > 0.5 (when robot_measurements == inf)
-        weights[infs] = 1 - norm.cdf(3.5, particle_measurements[infs], sigma)
+        
+        weights = norm.pdf(particle_measurements, robot_measurements, sigma)
 
         # Probability that I am the right hypothesis
         # Add 1 to weights such that a very low weight doesn't instantly kill me
-        self._weight = np.prod(weights+1)-0.99
-        # Alternate weighing of Squared Error - a few very good measurements important here:
-        # self._weight = np.sum(weights ** 2)
+        self._weight = np.prod(weights+1)
 	
 
         print("mp: ", measured_pose, " self_pose: ", self._pose) 
