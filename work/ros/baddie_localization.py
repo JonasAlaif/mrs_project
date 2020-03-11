@@ -101,7 +101,7 @@ class Particle(object):
     
 
   def compute_weight(self, measured_pose, variance, occupancy_grid):
-    if not self.is_valid(occupancy_grid):
+    if self.is_valid(occupancy_grid) ==2:
 	self._weight = 0.0001
     else:
 	weights = np.zeros(3, dtype=np.float32)
@@ -112,9 +112,6 @@ class Particle(object):
 
         
         weights = norm.pdf(particle_measurements, robot_measurements, sigma)
-
-        # Probability that I am the right hypothesis
-        # Add 1 to weights such that a very low weight doesn't instantly kill me
         self._weight = np.prod(weights+1)
 	
 
