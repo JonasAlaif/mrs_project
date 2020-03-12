@@ -38,21 +38,29 @@ X = 0
 Y = 1
 YAW = 2
 
-def check_line_of_sight(from_pos, to_pos, obstacle_map):
-  uncertainty = 1
-  curr_pos = from_pos.copy()
-  goal_pos = to_pos.copy()
-  step = to_pos - from_pos
-  step = step / np.amax(np.abs(step)) * obstacle_map.resolution
-  step_size = np.linalg.norm(step)
-  while step_size < np.linalg.norm(goal_pos - curr_pos):
-    curr_uncertainty = obstacle_map.get_visibility(curr_pos)
-    uncertainty *= np.power(curr_uncertainty, step_size)
-    #print(uncertainty)
-    if uncertainty < 1e-10:
-      return 0.0
-    curr_pos += step
-  return uncertainty
+def in_line_of_sight(from_pos, pol_poses, obstacle_map):
+  uncertainties = np.empty(0)
+  for to_pos in pol_poses:
+    uncertainty = 1
+    curr_pos = from_pos.copy()
+    goal_pos = to_pos.copy()
+    step = to_pos - from_pos
+    step = step / np.amax(np.abs(step)) * obstacle_map.resolution
+    step_size = np.linalg.norm(step)
+
+    while step_size < np.linalg.norm(goal_pos - curr_pos):
+      curr_uncertainty = obstacle_map.get_visibility(curr_pos)
+      uncertainty *= np.power(curr_uncertainty, step_size)
+      if uncertainty < 1e-10:
+          uncertainty = 0.0
+          break
+
+      curr_pos += step
+    
+    np.append(uncertainties, uncertainty)
+
+  #return np.prod(uncertainties)
+  return np.minimum(uncertainties)
 
 
 class Particle(object):
@@ -98,19 +106,23 @@ class Particle(object):
     self._pose += delta_pose
     
 
-  def compute_weight(self, measured_pose, scale, occupancy_grid):
+  def compute_weight(self, measured_pose, scale, occupancy_grid, police_poses):
     if not self.is_valid(occupancy_grid):
       self._weight = 0
       return
+
     if scale == float('inf'):
       self._weight = 1
-      return
-    
+      return     
+
     if scale == 0:
       scale = 1e-6
+
+    line_of_sight_uncertainty = in_line_of_sight(self._pose, police_poses, occupancy_grid)
+
     weights = np.zeros(2, dtype=np.float32)
     weights = norm.pdf(self.pose[:2], measured_pose[:2], scale)
-    self._weight = np.prod(weights)
+    self._weight = np.prod(weights) * line_of_sight_uncertainty #TODO play with calculation
 
     #print("mp: ", measured_pose, " var: ", variance," self_pose: ", self._pose) 
     #print("weight updated to: ", self._weight)
@@ -125,12 +137,12 @@ def initialize():
   particle_publisher = rospy.Publisher('/particles', PointCloud, queue_size=1)
   frame_id = 0
 
-def update_particles(particles, dt, measured_pose, scale, num_particles, occupancy_grid):
+def update_particles(particles, dt, measured_pose, scale, num_particles, occupancy_grid, police_poses):
   # Update particle positions and weights.
   total_weight = 0.
   for i, p in enumerate(particles):
     p.move(dt)
-    p.compute_weight(measured_pose, scale, occupancy_grid)
+    p.compute_weight(measured_pose, scale, occupancy_grid, police_poses)
     total_weight += p.weight
 
   # Low variance re-sampling of particles.
