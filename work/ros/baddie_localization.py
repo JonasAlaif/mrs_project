@@ -112,7 +112,6 @@ class Particle(object):
       self._weight = 0
       return
 
-    #likelihood of being in line with police, 0 meaning very likely
     line_of_sight_uncertainty = in_line_of_sight(self._pose, police_positions, occupancy_grid)
 
     if line_of_sight_uncertainty == 0:
@@ -120,7 +119,7 @@ class Particle(object):
     else:
       re_scale = 1 / line_of_sight_uncertainty - 1
 
-    if scale == float('inf') and re_scale != float('inf'):
+    if scale == float('inf'):
       self._weight = line_of_sight_uncertainty
       return     
     
