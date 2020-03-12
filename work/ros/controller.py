@@ -50,7 +50,7 @@ Y = 1
 YAW = 2
 
 
-SPEED = 0.1
+MAX_BADDIE_SPEED = 1.2
 
 EXIT_POSITION = np.array([9.0, 0.0])
 
@@ -94,7 +94,7 @@ def run(args):
   police = dict()
   baddies = dict()
   baddies_particles = dict()
-  num_particles = 50
+  num_particles = 30
   curr_time = rospy.get_time()
 
   # this will be a dictionary indexed on the robot name which gives you back the 3-tuple
@@ -240,10 +240,10 @@ def run(args):
 
     if len(police.keys()) != 0:
       all_police_positions_weighted = np.array([(pol[2].pose[:2], 0.5) for pol in police.values()])
-      all_police_positions = all_police_positions_weighted[:][0]
+      all_police_positions = np.array([pol[2].pose[:2] for pol in police.values()])
 
     # update baddie particles
-    '''
+    
     new_time = rospy.get_time()
     for name in baddies.keys():
       gtpose = baddies[name][2]
@@ -255,12 +255,12 @@ def run(args):
         if not particle.ready:
           particle.initialize(gtpose.pose)
       dt = new_time - curr_time
-      baddies_particles[name] = baddie_localization.update_particles(b_particles, dt, police_observed_pose[0], police_observed_pose[1], num_particles, obstacle_map, all_police_positions)
+      baddies_particles[name] = baddie_localization.update_particles(b_particles, dt, police_observed_pose[0], police_observed_pose[1], num_particles, obstacle_map, all_police_positions, MAX_BADDIE_SPEED)
     all_particles = [baddies_particles[name] for name in baddies.keys() if baddies[name][2].ready]
     if len(all_particles) != 0:
       baddie_localization.publish_particles(np.concatenate(all_particles))
     curr_time = new_time
-    '''
+    
 
 
 
@@ -279,7 +279,7 @@ def run(args):
         # shouldn't be too hard and might give interesting results
         baddie_poses = np.array([(baddies[target][2].pose[:2], 1)])
         # baddie_poses = baddie_gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map)
-        # baddie_particle_poses = np.array([(p.pose[:2], 1) for p in baddies_particles[target]])
+        baddie_particle_poses = np.array([(p.pose[:2], 1) for p in baddies_particles[target]])
       else:
         baddie_poses = None
 
@@ -289,7 +289,7 @@ def run(args):
         u, w = police_navigation.navigate_police_2(name,
                                                    laser,
                                                    gtpose,
-                                                   baddie_poses,
+                                                   baddie_particle_poses,
                                                    client_path_tuples,
                                                    occupancy_grid_base,
                                                    MAX_ITERATIONS,
@@ -324,13 +324,9 @@ def run(args):
       police_pos = [(pol[2].pose[:2], 1.5) for pol in police.values()]
       baddies_pos = [(bad[2].pose[:2], 1) for bad in other_baddies.values()]
 
-      class Struct(object): pass
-      goal = Struct()
-      goal.pose = EXIT_POSITION
       u, w = baddie_navigation.navigate_baddie_hybrid(name,
                                                       laser,
                                                       gtpose,
-                                                      #goal,
                                                       client_path_tuples,
                                                       occupancy_grid_base,
                                                       MAX_ITERATIONS,
@@ -339,7 +335,7 @@ def run(args):
 
       if u is not None and w is not None:
         vel_msg = Twist()
-        vel_msg.linear.x = 1.2 * u
+        vel_msg.linear.x = MAX_BADDIE_SPEED * u
         vel_msg.angular.z = w
         pub.publish(vel_msg)
 
