@@ -95,7 +95,7 @@ def run(args):
   baddies = dict()
   baddies_particles = dict()
   num_particles = 50
-  curr_time = rospy.get_time()
+  last_reg_time = rospy.Time.now().to_sec()
 
   # this will be a dictionary indexed on the robot name which gives you back the 3-tuple
   # (path, goal, time_created)
@@ -143,6 +143,7 @@ def run(args):
                                     np.array([9.0, 0.0]),
                                     time_now)
         print("registered robot", name, "with role", role)
+        last_reg_time = rospy.Time.now().to_sec()
 
     #for name in police.keys():
     #  # get the location of the bot
@@ -193,7 +194,7 @@ def run(args):
       (pub, laser, gtpose, t) = baddies[badname]
       if gtpose.ready:
         dist = np.linalg.norm(gtpose.pose[:2] - EXIT_POSITION)
-        if gtpose.pose[:2][X] > EXIT_POSITION[X]:
+        if dist < 0.5:
           time_lasted = rospy.Time.now().to_sec() - baddies[badname][3]
           print(name, 'escaped after ', time_lasted)
 
@@ -222,20 +223,24 @@ def run(args):
     #    target = None
 
     # for each police pick the closest baddie for them to chase
-    for pol in police.keys():
-      if targets[pol] is not None:
-        continue
-      min_dist = float('inf')
-      closest = None
-      for bad in baddies.keys():
-        dist = np.linalg.norm(police[pol][2].pose[:2] - baddies[bad][2].pose[:2])
-        if dist < min_dist:
-          min_dist = dist
-          closest = bad
+    # wait 1 second before choosing targets
+    if rospy.Time.now().to_sec() - last_reg_time > 1:
+      for pol in police.keys():
+        if targets[pol] is not None:
+          continue
+        min_dist = float('inf')
+        closest = None
+        for bad in baddies.keys():
+          dist = np.linalg.norm(police[pol][2].pose[:2] - baddies[bad][2].pose[:2])
+          print('dist from', pol, 'to', bad, 'is', dist)
+          if dist < min_dist:
+            min_dist = dist
+            closest = bad
 
-      # set the closest baddie as this police's target
-      print(pol, 'is chasing', closest)
-      targets[pol] = closest
+        # set the closest baddie as this police's target
+        if closest is not None:
+          print(pol, 'is chasing', closest)
+        targets[pol] = closest
 
 
     if len(police.keys()) != 0:

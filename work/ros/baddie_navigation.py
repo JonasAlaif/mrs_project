@@ -47,7 +47,7 @@ X = 0
 Y = 1
 YAW = 2
 
-SPEED = 0.2
+SPEED = 0.125
 
 #EXIT_POSITION = np.array([9.0, 0.0])
 EXIT_POSITION = np.array([9.0, 0.0, 0.0])
@@ -169,7 +169,7 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
           min_dist = min_dist/weight
           if min_dist < min_dist_all:
             min_dist_all = min_dist
-          weight = weight/np.linalg.norm(end - start)
+          weight = weight/(np.linalg.norm(end - start)**2)
         if min_dist_all < 1.5:
           print(name, 'recalculating path due to nearby police')
           print(min_dist_all)
@@ -251,7 +251,7 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
         print('got to the end of the path')
         return None, None
 
-    v = potential_field_map.get_velocity(lin_pos[:2], [(path[0][:2], 1)], [], obstacle_map)
+    v = potential_field_map.get_velocity(lin_pos[:2], [(path[0][:2], 1)], baddies, obstacle_map)
     #print(name, 'potential field velocity', v)
     u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
     return u, w

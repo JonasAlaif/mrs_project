@@ -432,7 +432,7 @@ def draw_solution(start_node, police, final_node=None):
     v.visited = True
     # Draw path from u to v.
     if u is not None:
-      #draw_path(u, v)
+      draw_path(u, v)
       pass
     points.append(v.pose[:2])
     for w in v.neighbors:
@@ -442,7 +442,7 @@ def draw_solution(start_node, police, final_node=None):
     plt.scatter(p[0][0], p[0][1], s=10, marker='o', color=[1, 0, 0])
 
   points = np.array(points)
-  #plt.scatter(points[:, 0], points[:, 1], s=10, marker='o', color=(.8, .8, .8))
+  plt.scatter(points[:, 0], points[:, 1], s=10, marker='o', color=(.8, .8, .8))
   if final_node is not None:
     plt.scatter(final_node.position[0], final_node.position[1], s=10, marker='o', color='k')
     # Draw final path.
