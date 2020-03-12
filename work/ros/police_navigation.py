@@ -31,14 +31,11 @@ except ImportError:
 
 directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../python')
 sys.path.insert(0, directory)
-try:
-  import rrt
-  import potential_field_map
-except ImportError:
-  raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
+import rrt
+import potential_field_map
 
 MAX_ITERATIONS = 1500
-EPSILON = 0.1
+EPSILON = 0.15
 
 X = 0
 Y = 1
@@ -50,7 +47,8 @@ obstacle_map = None
 
 def initialize():
   global obstacle_map
-  obstacle_map = potential_field_map.initialize('/home/ravi/catkin_ws/src/mrs_project/work/python/map_city_3')
+  local_dir = os.path.dirname(os.path.abspath(__file__))
+  obstacle_map = potential_field_map.initialize(local_dir + '/../python/map_city_3')
   #potential_field_map.display_obst_map(obstacle_map)
   return obstacle_map
 
@@ -133,11 +131,10 @@ def navigate_police(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_
     return None, None
 
 
-
-def navigate_police_2(name, gtpose, laser, baddie_pose, paths, occupancy_grid, max_iterations, other_police):
+def navigate_police_2(name, laser, gtpose, baddie_poses, paths, occupancy_grid, max_iterations, other_police):
   global obstacle_map
   control_pos = gtpose.pose[:2] + np.array([EPSILON*np.cos(gtpose.pose[YAW]), EPSILON*np.sin(gtpose.pose[YAW])]) / 3
-  v = potential_field_map.get_velocity(control_pos, baddie_pose[:2], other_police, obstacle_map)
+  v = potential_field_map.get_velocity(control_pos, baddie_poses, other_police, obstacle_map)
   u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
   #print('My pos: ', control_pos)
   #print('Target pos: ', baddie_gtp.pose[:2])

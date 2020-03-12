@@ -27,25 +27,29 @@ ROBOT_RADIUS = 0.105 / 2.
 def sigmoid(x):
   return np.tanh(x)
 
-def get_velocity_to_reach_goal(position, goal_position):
+def get_velocity_to_reach_goal(position, goal_positions):
   v = np.zeros(2, dtype=np.float32)
-  to_goal = goal_position - position
-  to_goal_magnitude = np.linalg.norm(to_goal)
-  if to_goal_magnitude < 1e-3:
-    return 0
-  # Normalise velocity to be <= MAX_SPEED
-  v = MAX_SPEED * sigmoid(to_goal_magnitude * 3) * (to_goal / to_goal_magnitude)
-  # Add perlin noise to avoid travelling in a straight line and getting stuck
-  #perlin = np.array([noise.pnoise2(position[0], position[1]), noise.pnoise2(position[0], position[1], base=1)])
-  #v = 2./3. * v + 1./3. * v * perlin
-  return v
+  sum_weight = 0.0
+  for (goal_pos, weight) in goal_positions:
+    sum_weight += weight
+    to_goal = goal_pos - position
+    to_goal_magnitude = np.linalg.norm(to_goal)
+    if to_goal_magnitude < 1e-3:
+      continue
+    # Normalise velocity to be <= MAX_SPEED
+    v += weight * sigmoid(to_goal_magnitude * 3) * (to_goal / to_goal_magnitude)
+  v_magnitude = np.linalg.norm(v)
+  if v_magnitude < 1e-3:
+      return v
+  avg_weight = sum_weight / len(goal_positions)
+  return MAX_SPEED * v / v_magnitude * avg_weight
 
 def get_velocity_to_avoid_positions(position, other_positions):
   v = np.zeros(2, dtype=np.float32)
   sum_weight = 0.0
   for (other_pos, weight) in other_positions:
     sum_weight += weight
-    from_other = position - other_pos
+    from_other = position[:2] - other_pos[:2]
     from_other_magnitude = np.linalg.norm(from_other)
     from_other_right = np.array((from_other[1], -from_other[0]))
     if from_other_magnitude < 1e-3:
@@ -63,7 +67,7 @@ def get_velocity_to_avoid_positions(position, other_positions):
 
 def get_velocity_to_avoid_obstacles(position, obstacle_map):
   v = np.zeros(2, dtype=np.float32)
-  v = MAX_SPEED * obstacle_map.get_gradient(position)
+  v = MAX_SPEED * obstacle_map.get_gradient(position[:2])
   return v
 
 
@@ -81,20 +85,22 @@ def cap(v, max_speed):
   return v
 
 
-def get_velocity(position, goal_position, avoid_positions, obstacle_map, mode='all'):
-  if mode in ('goal', 'all'):
-    v_goal = get_velocity_to_reach_goal(position, goal_position)
+def get_velocity(position, goal_positions, avoid_positions, obstacle_map, mode='all'):
+  if 'goal' in mode or 'all' in mode:
+    v_goal = get_velocity_to_reach_goal(position, goal_positions)
   else:
     v_goal = np.zeros(2, dtype=np.float32)
-  if mode in ('obstacle', 'all'):
+  if 'obstacle' in mode or 'all' in mode:
     v_avoid = get_velocity_to_avoid_obstacles(position, obstacle_map)
   else:
     v_avoid = np.zeros(2, dtype=np.float32)
-  if mode in ('friendlies', 'all'):
+  if 'friendlies' in mode or 'all' in mode:
     v_avoid_friends = get_velocity_to_avoid_positions(position, avoid_positions)
   else:
     v_avoid_friends = np.zeros(2, dtype=np.float32)
-  v = v_goal + v_avoid + v_avoid_friends
+  v = v_goal
+  v += v_avoid
+  v += v_avoid_friends
   return cap(v, max_speed=MAX_SPEED)
 
 
@@ -122,7 +128,7 @@ class ObstacleMap(object):
     minima_in_y = np.argwhere(np.logical_and(np.abs(gy) < 0.2, ggy < -0.095))
     self._minima = np.concatenate((minima_in_x, minima_in_y), axis=0)
     self._values = np.stack([gx, gy], axis=-1)
-    
+
     self._origin = np.array(origin[:2], dtype=np.float32)
     self._origin -= resolution / 2.
     assert origin[YAW] == 0.
@@ -229,7 +235,7 @@ def display_obst_map(obstacle_map, mode='all'):
   V = np.zeros_like(Xs)
   for i in range(len(Xs)):
     for j in range(len(Xs[0])):
-      velocity = get_velocity(np.array([Xs[i, j], Ys[i, j]]), GOAL_POSITION, [], obstacle_map, mode)
+      velocity = get_velocity(np.array([Xs[i, j], Ys[i, j]]), [(GOAL_POSITION, 1)], [], obstacle_map, mode)
       U[i, j] = velocity[0]
       V[i, j] = velocity[1]
   plt.quiver(Xs, Ys, U, V, units='width')
@@ -242,8 +248,8 @@ def display_obst_map(obstacle_map, mode='all'):
   positions = [x]
   positions_2 = [x_2]
   for t in np.arange(0., 17., dt):
-    v = get_velocity(x, GOAL_POSITION, [(x_2, 0.8)], obstacle_map, mode)
-    v_2 = get_velocity(x_2, GOAL_POSITION, [(x, 0.8)], obstacle_map, mode)
+    v = get_velocity(x, [(GOAL_POSITION, 1)], [(x_2, 0.8)], obstacle_map, mode)
+    v_2 = get_velocity(x_2, [(GOAL_POSITION, 1)], [(x, 0.8)], obstacle_map, mode)
     x = x + v * dt
     x_2 = x_2 + v_2 * dt
     positions.append(x)
