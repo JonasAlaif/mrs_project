@@ -193,9 +193,16 @@ def run(args):
       (pub, laser, gtpose, t) = baddies[badname]
       if gtpose.ready:
         dist = np.linalg.norm(gtpose.pose[:2] - EXIT_POSITION)
-        if dist < 0.5:
+        if gtpose.pose[:2][X] > EXIT_POSITION[X]:
           time_lasted = rospy.Time.now().to_sec() - baddies[badname][3]
           print(name, 'escaped after ', time_lasted)
+
+          # stop this baddie
+          vel_msg = Twist()
+          vel_msg.linear.x = 0
+          vel_msg.angular.z = 0
+          baddies[badname][0].publish(vel_msg)
+
           del baddies[badname]
           del client_path_tuples[badname]
           for pol in targets.keys():

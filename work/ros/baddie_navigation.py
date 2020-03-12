@@ -56,6 +56,8 @@ obstacle_map = None
 pause_srv = None
 unpause_srv = None
 
+img_dict = dict()
+
 def initialize():
   global obstacle_map
   global pause_srv
@@ -212,9 +214,16 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
           #plt.axis('equal')
           #plt.xlabel('x')
           #plt.ylabel('y')
-          #plt.xlim([-.5 - 2., 2. + .5])
-          #plt.ylim([-.5 - 2., 2. + .5])
-          #plt.show()
+          #plt.xlim([-.5 - 8.7, 8.7 + .5])
+          #plt.ylim([-.5 - 8.7, 8.7 + .5])
+          ##plt.show()
+          #global img_dict
+          #if name in img_dict.keys():
+          #  img_dict[name] = img_dict[name] + 1
+          #else:
+          #  img_dict[name] = 0
+          #plt.savefig(name + str(img_dict[name]) + '.png')
+
           #unpause_srv(EmptyRequest())
     else:
       print(name, 'ground truth not ready for goal setting')
