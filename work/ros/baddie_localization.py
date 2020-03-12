@@ -106,14 +106,14 @@ class Particle(object):
     self._pose += delta_pose
     
 
-  def compute_weight(self, measured_pose, scale, occupancy_grid, police_poses):
+  def compute_weight(self, measured_pose, scale, occupancy_grid, police_positions):
 
     if not self.is_valid(occupancy_grid):
       self._weight = 0
       return
 
     #likelihood of being in line with police, 0 meaning very likely
-    line_of_sight_uncertainty = in_line_of_sight(self._pose, police_poses, occupancy_grid)
+    line_of_sight_uncertainty = in_line_of_sight(self._pose, police_positions, occupancy_grid)
 
     if line_of_sight_uncertainty == 0:
       re_scale = float('inf')
