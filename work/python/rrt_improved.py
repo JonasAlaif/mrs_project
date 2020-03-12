@@ -195,7 +195,7 @@ def calc_cost(parent, child_pos, police):
     #print('pol_dist: ', police_distance)
   #police_distance = 0 # TODO calculate
   # don't actually know if this works properly
-  return parent.cost + dist + (10/(police_distance))**3
+  return parent.cost + dist + (4/(police_distance))**3
 
 # TODO rewrite this (currently just copy-pasted from https://gist.github.com/nim65s/5e9902cd67f094ce65b0)
 def seg_dist(A, B, P):
@@ -239,7 +239,7 @@ def rrt_nocircle(start_pose, goal_position, occupancy_grid, police, num_iteratio
       #print('u is None')
       #print('rejected because no valid parents')
       continue
-    if check_line_of_sight(u.pose[:2], position[:2], occupancy_grid):
+    if check_line_of_sight(u.position, position[:2], occupancy_grid):
       v = Node(np.append(position, 0))
     else:
       #print('rejected', position, ' because no LOS')
@@ -254,6 +254,7 @@ def rrt_nocircle(start_pose, goal_position, occupancy_grid, police, num_iteratio
       # Could potentially do a check that:
       # if we are not finding a better solution for a while, then break
       #break
+    #rewire_neighbours(v, graph, graph_dists, occupancy_grid, police)
 
   #fig, ax = plt.subplots()
   #occupancy_grid.draw()
@@ -264,6 +265,20 @@ def rrt_nocircle(start_pose, goal_position, occupancy_grid, police, num_iteratio
   if len(final_nodes) == 0:
     return start_node, None
   return start_node, min(final_nodes, key=lambda final_node: final_node.cost)
+
+def rewire_neighbours(new_node, graph, graph_dists, occupancy_grid, police):
+  for (n, d) in graph_dists:
+    can_be_connected = parent_filter_noyaw(n.position, (new_node, d)) or n.parent == new_node
+    new_cost = calc_cost(n, new_node.position, police)
+    if can_be_connected and n.cost > new_cost:
+      if not check_line_of_sight(n.position, new_node.position, occupancy_grid):
+        continue
+      n.cost = new_cost
+      old_parent = n.parent
+      old_parent.neighbors.remove(n)
+      new_node.add_neighbor(n)
+      n.parent = new_node
+      rewire_neighbours(n, graph, [(m, np.linalg.norm(n.position - m.position)) for m in graph], occupancy_grid, police)
 
 def check_line_of_sight(from_pos, to_pos, obstacle_map):
   curr_pos = from_pos.copy()
