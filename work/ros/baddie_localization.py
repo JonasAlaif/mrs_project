@@ -39,9 +39,9 @@ Y = 1
 YAW = 2
 
 def in_line_of_sight(from_pos, pol_positions, obstacle_map):
-  uncertainties = np.empty(0)
+  certainties = np.empty(0)
   for to_pos in pol_positions:
-    uncertainty = 1
+    certainty = 1
     curr_pos = from_pos.copy()
     goal_pos = to_pos.copy()
     step = to_pos - from_pos
@@ -49,18 +49,19 @@ def in_line_of_sight(from_pos, pol_positions, obstacle_map):
     step_size = np.linalg.norm(step)
 
     while step_size < np.linalg.norm(goal_pos - curr_pos):
-      curr_uncertainty = obstacle_map.get_visibility(curr_pos)
-      uncertainty *= np.power(curr_uncertainty, step_size)
-      if uncertainty < 1e-10:
-          uncertainty = 0.0
+      curr_certainty = obstacle_map.get_visibility(curr_pos)
+      certainty *= np.power(curr_certainty, step_size)
+      if certainty < 1e-10:
+          certainty = 0.0
           break
 
       curr_pos += step
     
-    np.append(uncertainties, uncertainty)
-
-  #return np.prod(uncertainties)
-  return np.minimum(uncertainties)
+    np.append(certainties, certainty)
+  if len(certainties) == 0:
+    return 0
+  #return np.prod(certainties)
+  return np.amax(certainties)
 
 
 class Particle(object):
@@ -111,16 +112,15 @@ class Particle(object):
       self._weight = 0
       return
 
-    #likelihood of being in line with police, 0 meaning very likely
-    line_of_sight_uncertainty = in_line_of_sight(self._pose, police_positions, occupancy_grid)
+    line_of_sight_certainty = in_line_of_sight(self.pose[:2], police_positions, occupancy_grid)
 
-    if line_of_sight_uncertainty == 0:
-      re_scale = float('inf')
-    else:
-      re_scale = 1 / line_of_sight_uncertainty - 1
+    # if line_of_sight_certainty == 0:
+    #   re_scale = float('inf')
+    # else:
+    #   re_scale = 1 / line_of_sight_certainty - 1
 
-    if scale == float('inf') and re_scale != float('inf'):
-      self._weight = line_of_sight_uncertainty
+    if scale == float('inf'):
+      self._weight = 1 - line_of_sight_certainty
       return     
     
     if scale == 0:
@@ -129,7 +129,7 @@ class Particle(object):
    
     weights = np.zeros(2, dtype=np.float32)
     weights = norm.pdf(self.pose[:2], measured_pose[:2], scale)
-    self._weight = np.prod(weights) #* line_of_sight_uncertainty TODO play with calculation
+    self._weight = np.prod(weights) #* line_of_sight_certainty TODO play with calculation
 
     #print("mp: ", measured_pose, " var: ", variance," self_pose: ", self._pose) 
     #print("weight updated to: ", self._weight)
@@ -181,6 +181,8 @@ def publish_particles(particles):
   particle_msg.channels.append(intensity_channel)
   for p in particles:
     pt = Point32()
+    if len(p.pose) == 0:
+      continue
     pt.x = p.pose[X]
     pt.y = p.pose[Y]
     pt.z = .05
