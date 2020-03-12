@@ -50,7 +50,7 @@ Y = 1
 YAW = 2
 
 
-SPEED = 0.1
+MAX_BADDIE_SPEED = 1.2
 
 EXIT_POSITION = np.array([9.0, 0.0])
 
@@ -94,7 +94,7 @@ def run(args):
   police = dict()
   baddies = dict()
   baddies_particles = dict()
-  num_particles = 20
+  num_particles = 30
   curr_time = rospy.get_time()
 
   # this will be a dictionary indexed on the robot name which gives you back the 3-tuple
@@ -104,6 +104,8 @@ def run(args):
 
   # the targets that the police will chase
   targets = dict()
+  # the last time a robot was registered
+  last_reg_time = rospy.Time.now().to_sec()
 
   # Update controller 20 times a second
   rate_limiter = rospy.Rate(20)
@@ -143,6 +145,7 @@ def run(args):
                                     np.array([9.0, 0.0]),
                                     time_now)
         print("registered robot", name, "with role", role)
+        last_reg_time = rospy.Time.now().to_sec()
 
     #for name in police.keys():
     #  # get the location of the bot
@@ -193,7 +196,7 @@ def run(args):
       (pub, laser, gtpose, t) = baddies[badname]
       if gtpose.ready:
         dist = np.linalg.norm(gtpose.pose[:2] - EXIT_POSITION)
-        if gtpose.pose[:2][X] > EXIT_POSITION[X]:
+        if dist < 0.5:
           time_lasted = rospy.Time.now().to_sec() - baddies[badname][3]
           print(name, 'escaped after ', time_lasted)
 
@@ -222,20 +225,24 @@ def run(args):
     #    target = None
 
     # for each police pick the closest baddie for them to chase
-    for pol in police.keys():
-      if targets[pol] is not None:
-        continue
-      min_dist = float('inf')
-      closest = None
-      for bad in baddies.keys():
-        dist = np.linalg.norm(police[pol][2].pose[:2] - baddies[bad][2].pose[:2])
-        if dist < min_dist:
-          min_dist = dist
-          closest = bad
+    # wait 1 second before choosing targets
+    if rospy.Time.now().to_sec() - last_reg_time > 1:
+      for pol in police.keys():
+        if targets[pol] is not None:
+          continue
+        min_dist = float('inf')
+        closest = None
+        for bad in baddies.keys():
+          dist = np.linalg.norm(police[pol][2].pose[:2] - baddies[bad][2].pose[:2])
+          print('dist from', pol, 'to', bad, 'is', dist)
+          if dist < min_dist:
+            min_dist = dist
+            closest = bad
 
-      # set the closest baddie as this police's target
-      print(pol, 'is chasing', closest)
-      targets[pol] = closest
+        # set the closest baddie as this police's target
+        if closest is not None:
+          print(pol, 'is chasing', closest)
+        targets[pol] = closest
 
 
     if len(police.keys()) != 0:
@@ -255,7 +262,7 @@ def run(args):
         if not particle.ready:
           particle.initialize(gtpose.pose)
       dt = new_time - curr_time
-      baddies_particles[name] = baddie_localization.update_particles(b_particles, dt, police_observed_pose[0], police_observed_pose[1], num_particles, obstacle_map, all_police_positions)
+      baddies_particles[name] = baddie_localization.update_particles(b_particles, dt, police_observed_pose[0], police_observed_pose[1], num_particles, obstacle_map, all_police_positions, MAX_BADDIE_SPEED)
     all_particles = [baddies_particles[name] for name in baddies.keys() if baddies[name][2].ready]
     if len(all_particles) != 0:
       baddie_localization.publish_particles(np.concatenate(all_particles))
@@ -297,7 +304,7 @@ def run(args):
 
       if u is not None and w is not None:
         vel_msg = Twist()
-        vel_msg.linear.x = 3 * u
+        vel_msg.linear.x = u
         vel_msg.angular.z = w
         pub.publish(vel_msg)
 
@@ -323,29 +330,19 @@ def run(args):
       del other_baddies[name]
       police_pos = [(pol[2].pose[:2], 1.5) for pol in police.values()]
       baddies_pos = [(bad[2].pose[:2], 1) for bad in other_baddies.values()]
-      avoid_pos = police_pos + baddies_pos
 
-      '''
-      #u, w = baddie_navigation.navigate_baddie_hybrid(name,
+      u, w = baddie_navigation.navigate_baddie_hybrid(name,
                                                       laser,
                                                       gtpose,
                                                       client_path_tuples,
                                                       occupancy_grid_base,
                                                       MAX_ITERATIONS,
-                                                      avoid_pos)'''
-
-      u, w = baddie_navigation.navigate_baddie_pot_nai(name,
-                                                       laser, 
-                                                       gtpose, 
-                                                       EXIT_POSITION, 
-                                                       None, 
-                                                       occupancy_grid_base, 
-                                                       MAX_ITERATIONS,
-                                                       avoid_pos)
+                                                      police_pos,
+                                                      baddies_pos)
 
       if u is not None and w is not None:
         vel_msg = Twist()
-        vel_msg.linear.x = 1.2 * u
+        vel_msg.linear.x = MAX_BADDIE_SPEED * u
         vel_msg.angular.z = w
         pub.publish(vel_msg)
 

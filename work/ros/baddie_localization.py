@@ -29,8 +29,8 @@ from std_msgs.msg import Header
 # Odometry.
 from nav_msgs.msg import Odometry
 
-W_MAX = 0.5 #rad/s
-U_MAX = 0.2 #m/s
+W_MAX = 0.2 #rad/s
+U_MAX = 0.05 #m/s
 MAP_SIZE = 8.0
 
 # Constants used for indexing.
@@ -38,37 +38,36 @@ X = 0
 Y = 1
 YAW = 2
 
-def in_line_of_sight(from_pos, pol_positions, obstacle_map):
-  certainties = np.empty(0)
-  for to_pos in pol_positions:
-    certainty = 1
-    curr_pos = from_pos.copy()
-    goal_pos = to_pos.copy()
-    step = to_pos - from_pos
-    step = step / np.amax(np.abs(step)) * obstacle_map.resolution
-    step_size = np.linalg.norm(step)
+def check_line_of_sight(from_pos, to_pos, obstacle_map):
+  uncertainty = 1
+  curr_pos = from_pos.copy()
+  goal_pos = to_pos.copy()
+  step = to_pos - from_pos
+  step = step / np.amax(np.abs(step)) * obstacle_map.resolution
+  step_size = np.linalg.norm(step)
+  while step_size < np.linalg.norm(goal_pos - curr_pos):
+    curr_uncertainty = obstacle_map.get_visibility(curr_pos)
+    uncertainty *= np.power(curr_uncertainty, step_size)
+    #print(uncertainty)
+    if uncertainty < 1e-10:
+      return 0.0
+    curr_pos += step
+  return uncertainty
 
-    while step_size < np.linalg.norm(goal_pos - curr_pos):
-      curr_certainty = obstacle_map.get_visibility(curr_pos)
-      certainty *= np.power(curr_certainty, step_size)
-      if certainty < 1e-10:
-          certainty = 0.0
-          break
-
-      curr_pos += step
-    
-    np.append(certainties, certainty)
-  if len(certainties) == 0:
-    return 0
-  #return np.prod(certainties)
-  return np.amax(certainties)
-
+def pose_with_uncertainty(pose, observer_poses, obstacle_map):
+  uncertainties = np.array([check_line_of_sight(observer_pose[:2], pose[:2], obstacle_map) for observer_pose in observer_poses])
+  if len(uncertainties) == 0:
+    return (pose, 0)
+  raw_uncertainty = np.amax(uncertainties) # 1 for certain, 0 for no knowledge
+  return (pose, raw_uncertainty)
 
 class Particle(object):
   """Represents a particle."""
 
   def __init__(self):
     self._pose = []
+    self._last_w = 0.
+    self._last_u = 0.2
     self._weight = 1.
     self._ready = False
 
@@ -94,15 +93,20 @@ class Particle(object):
     return not_in_obstacle and in_bounds
 
 
-  def move(self, dt):
+  def move(self, dt, max_speed):
     delta_pose = np.zeros(3, dtype=np.float32)
 
-    u = U_MAX * np.random.random_sample()
-    w = 2 * W_MAX * np.random.random_sample() - W_MAX
+    self._last_u += 2 * U_MAX * np.random.random_sample() - U_MAX
+    self._last_u = np.clip(self._last_u, -.02, .2)
+    self._last_w += 2 * W_MAX * np.random.random_sample() - W_MAX
+    self._last_w = np.clip(self._last_w, -.5, .5)
 
-    delta_pose[X] = u * np.cos(self.pose[YAW]) * dt
-    delta_pose[Y] = u * np.sin(self.pose[YAW]) * dt
-    delta_pose[YAW] = w * dt
+    delta_pose[X] = self._last_u * np.cos(self.pose[YAW]) * dt * max_speed
+    delta_pose[Y] = self._last_u * np.sin(self.pose[YAW]) * dt * max_speed
+    delta_pose[YAW] = self._last_w * dt
+
+    if np.random.random_sample() < 0.25 * dt:
+      delta_pose += np.array([2*np.random.random_sample()-1, 2*np.random.random_sample()-1, np.random.random_sample()-0.5])
 
     self._pose += delta_pose
     
@@ -112,7 +116,6 @@ class Particle(object):
       self._weight = 0
       return
 
-    line_of_sight_certainty = in_line_of_sight(self.pose[:2], police_positions, occupancy_grid)
 
     # if line_of_sight_certainty == 0:
     #   re_scale = float('inf')
@@ -120,16 +123,20 @@ class Particle(object):
     #   re_scale = 1 / line_of_sight_certainty - 1
 
     if scale == float('inf'):
-      self._weight = 1 - line_of_sight_certainty
+      pose, certainty = pose_with_uncertainty(self.pose, police_positions, occupancy_grid)
+      #print(certainty)
+      self._weight = 1 - certainty
       return     
     
-    if scale == 0:
-      scale = 1e-6
-
+    if scale < 0.01:
+      self._weight = 1
+      self._pose = measured_pose
+      return
    
     weights = np.zeros(2, dtype=np.float32)
     weights = norm.pdf(self.pose[:2], measured_pose[:2], scale)
-    self._weight = np.prod(weights) #* line_of_sight_certainty TODO play with calculation
+    yaw_diff = np.abs(self.pose[YAW] - measured_pose[YAW]) % np.pi
+    self._weight = np.prod(weights) / (yaw_diff + 1) #* line_of_sight_certainty TODO play with calculation
 
     #print("mp: ", measured_pose, " var: ", variance," self_pose: ", self._pose) 
     #print("weight updated to: ", self._weight)
@@ -144,11 +151,11 @@ def initialize():
   particle_publisher = rospy.Publisher('/particles', PointCloud, queue_size=1)
   frame_id = 0
 
-def update_particles(particles, dt, measured_pose, scale, num_particles, occupancy_grid, police_positions):
+def update_particles(particles, dt, measured_pose, scale, num_particles, occupancy_grid, police_positions, max_speed):
   # Update particle positions and weights.
   total_weight = 0.
   for i, p in enumerate(particles):
-    p.move(dt)
+    p.move(dt, max_speed)
     p.compute_weight(measured_pose, scale, occupancy_grid, police_positions)
     total_weight += p.weight
 
@@ -164,7 +171,8 @@ def update_particles(particles, dt, measured_pose, scale, num_particles, occupan
       if j >= num_particles:
         j = num_particles - 1
       current_boundary = current_boundary + particles[j].weight
-    new_particles.append(copy.deepcopy(particles[j]))
+    new_particle = copy.deepcopy(particles[j])
+    new_particles.append(new_particle)
   return new_particles
 
 def publish_particles(particles):
