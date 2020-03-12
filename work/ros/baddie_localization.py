@@ -38,9 +38,9 @@ X = 0
 Y = 1
 YAW = 2
 
-def in_line_of_sight(from_pos, pol_poses, obstacle_map):
+def in_line_of_sight(from_pos, pol_positions, obstacle_map):
   uncertainties = np.empty(0)
-  for to_pos in pol_poses:
+  for to_pos in pol_positions:
     uncertainty = 1
     curr_pos = from_pos.copy()
     goal_pos = to_pos.copy()
@@ -145,12 +145,12 @@ def initialize():
   particle_publisher = rospy.Publisher('/particles', PointCloud, queue_size=1)
   frame_id = 0
 
-def update_particles(particles, dt, measured_pose, scale, num_particles, occupancy_grid, police_poses):
+def update_particles(particles, dt, measured_pose, scale, num_particles, occupancy_grid, police_positions):
   # Update particle positions and weights.
   total_weight = 0.
   for i, p in enumerate(particles):
     p.move(dt)
-    p.compute_weight(measured_pose, scale, occupancy_grid, police_poses)
+    p.compute_weight(measured_pose, scale, occupancy_grid, police_positions)
     total_weight += p.weight
 
   # Low variance re-sampling of particles.
