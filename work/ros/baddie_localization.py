@@ -37,6 +37,22 @@ X = 0
 Y = 1
 YAW = 2
 
+def check_line_of_sight(from_pos, to_pos, obstacle_map):
+  uncertainty = 1
+  curr_pos = from_pos.copy()
+  goal_pos = to_pos.copy()
+  step = to_pos - from_pos
+  step = step / np.amax(np.abs(step)) * obstacle_map.resolution
+  step_size = np.linalg.norm(step)
+  while step_size < np.linalg.norm(goal_pos - curr_pos):
+    curr_uncertainty = obstacle_map.get_visibility(curr_pos)
+    uncertainty *= np.power(curr_uncertainty, step_size)
+    #print(uncertainty)
+    if uncertainty < 1e-10:
+      return 0.0
+    curr_pos += step
+  return uncertainty
+
 
 class Particle(object):
   """Represents a particle."""
@@ -100,17 +116,14 @@ class Particle(object):
     self._pose += world_delta_pose
     
 
-  def compute_weight(self, measured_pose, variance, occupancy_grid):
+  def compute_weight(self, measured_pose, variance, occupancy_grid, policelocations):
     if not self.is_valid(occupancy_grid):
 	self._weight = 0
+    elif not in_line_of_sight(self._pose, policelocations, occupancy_grid):
+        self._weight = 0
     elif(variance == float('inf')):
         self._weight = 1
     else:
-<<<<<<< HEAD
-		
-=======
-
->>>>>>> scratch-jonas
 	weights = np.zeros(3, dtype=np.float32)
 
     	sigma = np.sqrt(variance)
