@@ -126,7 +126,7 @@ def navigate_baddie_rrt(name, laser, gtpose, paths, occupancy_grid, max_iteratio
     return None, None
 
 
-def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_iterations, police):
+def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_iterations, police, baddies):
   (path, goal, time_created) = paths[name]
   #print('navigating baddie')
 
@@ -203,28 +203,32 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
           path = new_path
           print('path updated for', name)
 
-          pause_srv(EmptyRequest())
-          #Plot environment.
-          fig, ax = plt.subplots()
-          occupancy_grid.draw()
-          rrt_improved.draw_solution(start_node, police, end_node)
-          plt.scatter(gtpose.pose[0], gtpose.pose[1], s=10, marker='o', color='blue', zorder=1000)
-          plt.scatter(goal[0], goal[1], s=10, marker='o', color='red', zorder=1000)
+          ## Plot environment.
+          #pause_srv(EmptyRequest())
+          #fig, ax = plt.subplots()
+          #occupancy_grid.draw()
+          #rrt_improved.draw_solution(start_node, police, end_node)
+          #for b in baddies:
+          #  plt.scatter(b[0][0], b[0][1], s=10, marker='o', color='green', zorder=1000)
+          #plt.scatter(gtpose.pose[0], gtpose.pose[1], s=10, marker='o', color='blue', zorder=1000)
+          #plt.scatter(goal[0], goal[1], s=10, marker='o', color='red', zorder=1000)
 
-          plt.axis('equal')
-          plt.xlabel('x')
-          plt.ylabel('y')
-          plt.xlim([-.5 - 8.7, 8.7 + .5])
-          plt.ylim([-.5 - 8.7, 8.7 + .5])
-          global img_dict
-          if name in img_dict.keys():
-           img_dict[name] = img_dict[name] + 1
-          else:
-           img_dict[name] = 0
-          plt.savefig(name + str(img_dict[name]) + '.png')
-          #plt.show()
+          #plt.axis('equal')
+          #plt.xlabel('x')
+          #plt.ylabel('y')
+          #plt.xlim([-.5 - 8.7, 8.7 + .5])
+          #plt.ylim([-.5 - 8.7, 8.7 + .5])
+          ##plt.show()
+          #global img_dict
+          #if name in img_dict.keys():
+          #  img_dict[name] = img_dict[name] + 1
+          #else:
+          #  img_dict[name] = 0
+          #plt.savefig(name + '_' + str(img_dict[name]) + '.png')
+          #plt.clf()
+          #plt.cla()
 
-          unpause_srv(EmptyRequest())
+          #unpause_srv(EmptyRequest())
     else:
       print(name, 'ground truth not ready for goal setting')
 
@@ -255,7 +259,7 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
     #class Struct(object): pass
     #goalstruct = Struct()
     #goalstruct.pose = goal[:2]
-    return navigate_baddie_pot_nai(name, laser, gtpose, goal[:2], paths, occupancy_grid, max_iterations, police)
+    return navigate_baddie_pot_nai(name, laser, gtpose, goal[:2], paths, occupancy_grid, max_iterations, police + baddies)
   else:
     return None, None
 
@@ -273,13 +277,13 @@ def baddie_braitenberg(name, laser, gtpose, paths, occupancy_grid, max_iteration
   w = sigmoid(5/front_right + 1/sigmoid(right) - 5/front_left - 1/sigmoid(left))
   return u, w
 
-  
+
 def navigate_baddie_pot_nai(name, laser, gtpose, goal, paths, occupancy_grid, max_iterations, other_police):
   if goal is None:
     return 0, 0
   global obstacle_map
   control_pos = gtpose.pose[:2] + np.array([EPSILON*np.cos(gtpose.pose[YAW]), EPSILON*np.sin(gtpose.pose[YAW])]) / 3
-  v = potential_field_map.get_velocity(control_pos, [(goal, 1)], other_police, obstacle_map, mode='all')
+  v = potential_field_map.get_velocity(control_pos, [(goal[:2], 1)], other_police, obstacle_map, mode='all')
   u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
   #print('My pos: ', control_pos)
   #print('Target pos: ', baddie_gtp.pose[:2])

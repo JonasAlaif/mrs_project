@@ -323,7 +323,6 @@ def run(args):
       del other_baddies[name]
       police_pos = [(pol[2].pose[:2], 1.5) for pol in police.values()]
       baddies_pos = [(bad[2].pose[:2], 1) for bad in other_baddies.values()]
-      avoid_pos = police_pos + baddies_pos
 
       class Struct(object): pass
       goal = Struct()
@@ -335,7 +334,8 @@ def run(args):
                                                       client_path_tuples,
                                                       occupancy_grid_base,
                                                       MAX_ITERATIONS,
-                                                      avoid_pos)
+                                                      police_pos,
+                                                      baddies_pos)
 
       if u is not None and w is not None:
         vel_msg = Twist()

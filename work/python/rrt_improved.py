@@ -38,10 +38,18 @@ printlock = multiprocessing.Lock()
 
 def sample_random_position(occupancy_grid):
   position = np.ones(2, dtype=np.float32)
+  top_left = np.array([0, 0])
+  while occupancy_grid.values[top_left[0]][top_left[1]] == FREE:
+    top_left = top_left + 1
+
+  bottom_right = np.asarray(occupancy_grid.values.shape) - 1
+  while occupancy_grid.values[bottom_right[0]][bottom_right[1]] == FREE:
+    bottom_right = bottom_right - 1
+
   # Get indicies of all free positions
-  free_positions = np.argwhere(occupancy_grid.values == FREE)
+  free_positions = np.argwhere(occupancy_grid.values[top_left[0]:bottom_right[0], top_left[1]:bottom_right[1]] == FREE)
   # Choose a random index
-  free_position = free_positions[np.random.choice(free_positions.shape[0])]
+  free_position = free_positions[np.random.choice(free_positions.shape[0])] + top_left
   # Get the world position of that point
   position = occupancy_grid.get_position(free_position[0], free_position[1])
   return position
@@ -224,6 +232,8 @@ def rrt_nocircle(start_pose, goal_position, occupancy_grid, police, num_iteratio
       position = goal_position[:2]
     else:
       position = sample_random_position(occupancy_grid)
+      #global los_rejected
+      #los_rejected.append(position)
     # Find closest (with respect to cost) node in graph.
     # In practice, one uses an efficient spatial structure (e.g., quadtree).
     graph_dists = [(n, np.linalg.norm(position - n.position)) for n in graph]
@@ -422,7 +432,8 @@ def draw_solution(start_node, police, final_node=None):
     v.visited = True
     # Draw path from u to v.
     if u is not None:
-      draw_path(u, v)
+      #draw_path(u, v)
+      pass
     points.append(v.pose[:2])
     for w in v.neighbors:
       s.append((w, v))
@@ -431,7 +442,7 @@ def draw_solution(start_node, police, final_node=None):
     plt.scatter(p[0][0], p[0][1], s=10, marker='o', color=[1, 0, 0])
 
   points = np.array(points)
-  plt.scatter(points[:, 0], points[:, 1], s=10, marker='o', color=(.8, .8, .8))
+  #plt.scatter(points[:, 0], points[:, 1], s=10, marker='o', color=(.8, .8, .8))
   if final_node is not None:
     plt.scatter(final_node.position[0], final_node.position[1], s=10, marker='o', color='k')
     # Draw final path.
