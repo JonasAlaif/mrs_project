@@ -142,48 +142,81 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
     #new_goal = rrt_improved.sample_random_position(occupancy_grid)[:2]
     new_goal = EXIT_POSITION
     goal = new_goal
+
   # if we selected a new goal or it's been a while since we last calculated a path, update our path
-  if new_goal is not None or (time_now - time_created > 10 and goal is not None):
+  if new_goal is not None or (time_now - time_created > 3 and goal is not None):
     if gtpose.ready:
-      global pause_srv
-      global unpause_srv
-      if pause_srv is not None:
+      recalc = True
+      if new_goal is None:
+        # we're updating due to time having passed
+        # just check if our path has police nearby
+        # if not, don't bother changing it
+        weight = 1
+        min_dist_all = float('inf')
+        for i in range(len(path) - 1):
+          start = path[i]
+          end = path[i+1]
+          # for this stretch, check if there is a police bot near it
+          min_dist = float('inf')
+          for p in police:
+            dist = rrt_improved.seg_dist(start[:2], end[:2], p[0][:2])
+            if dist < min_dist:
+              min_dist = dist
+
+          min_dist = min_dist/weight
+          if min_dist < min_dist_all:
+            min_dist_all = min_dist
+          weight = weight/np.linalg.norm(end - start)
+        if min_dist_all < 1.5:
+          print(name, 'recalculating path due to nearby police')
+          print(min_dist_all)
+          recalc = True
+        else:
+          print(name, 'no recalculation required')
+          print(min_dist_all)
+          paths[name] = (path, goal, time_now)
+          recalc = False
+
+      if recalc:
+        # recalculate the path
+        global pause_srv
         pause_srv(EmptyRequest())
         print('paused')
-      start_node, end_node = rrt_improved.rrt_nocircle(gtpose.pose, goal, occupancy_grid, police, max_iterations)
-      if unpause_srv is not None:
+
+        start_node, end_node = rrt_improved.rrt_nocircle(gtpose.pose, goal, occupancy_grid, police, max_iterations)
+
+        global unpause_srv
         unpause_srv(EmptyRequest())
         print('unpaused')
-      #start_node, end_node = rrt_improved.rrt_nocircle(np.array([-7.5, -7.4], dtype=np.float32),
-      #                                                 np.array([6.5, 7.5], dtype=np.float32),
-      #                                                 occupancy_grid, max_iterations)
-      print(end_node is None)
-      new_path = rrt_navigation.get_path(end_node)
-      paths[name] = (new_path, goal, time_now)
-      if new_path is not None:
-        if end_node is not None:
-          print(new_path)
-        path = new_path
-        print('path updated for', name)
 
-        #pause_srv(EmptyRequest())
-        ## Plot environment.
-        #fig, ax = plt.subplots()
-        #occupancy_grid.draw()
-        #plt.scatter(.3, .2, s=10, marker='o', color='green', zorder=1000)
-        #rrt_improved.draw_solution(start_node, police, end_node)
-        #plt.scatter(gtpose.pose[0], gtpose.pose[1], s=10, marker='o', color='green', zorder=1000)
-        #plt.scatter(goal[0], goal[1], s=10, marker='o', color='red', zorder=1000)
+        print(end_node is None)
+        new_path = rrt_navigation.get_path(end_node)
+        paths[name] = (new_path, goal, time_now)
 
-        #plt.axis('equal')
-        #plt.xlabel('x')
-        #plt.ylabel('y')
-        #plt.xlim([-.5 - 2., 2. + .5])
-        #plt.ylim([-.5 - 2., 2. + .5])
-        #plt.show()
-        #unpause_srv(EmptyRequest())
-      else:
-        print(name, 'ground truth not ready for goal setting')
+        if new_path is not None:
+          if end_node is not None:
+            #print(new_path)
+            print('new path cost:', end_node.cost)
+          path = new_path
+          print('path updated for', name)
+
+          pause_srv(EmptyRequest())
+          # Plot environment.
+          #fig, ax = plt.subplots()
+          #occupancy_grid.draw()
+          #rrt_improved.draw_solution(start_node, police, end_node)
+          #plt.scatter(gtpose.pose[0], gtpose.pose[1], s=10, marker='o', color='blue', zorder=1000)
+          #plt.scatter(goal[0], goal[1], s=10, marker='o', color='red', zorder=1000)
+
+          #plt.axis('equal')
+          #plt.xlabel('x')
+          #plt.ylabel('y')
+          #plt.xlim([-.5 - 2., 2. + .5])
+          #plt.ylim([-.5 - 2., 2. + .5])
+          #plt.show()
+          #unpause_srv(EmptyRequest())
+    else:
+      print(name, 'ground truth not ready for goal setting')
 
   if path is not None and len(path) > 0 and gtpose.ready:
     # find distance to first element in path
@@ -197,7 +230,7 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
       print('gtpose', gtpose.pose[:2], 'next', path[0])
       # delete the current point from the path
       del path[0]
-      print(path)
+      #print(path)
       # update the paths
       paths[name] = (path, goal, time_now)
       if len(path) == 0:
@@ -205,6 +238,7 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
         return None, None
 
     v = potential_field_map.get_velocity(lin_pos, path[0][:2], police, obstacle_map, mode='obstacle')
+    print(name, 'potential field velocity', v)
     u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
     return u, w
   elif gtpose.ready:

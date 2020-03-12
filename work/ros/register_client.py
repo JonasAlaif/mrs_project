@@ -30,9 +30,9 @@ if __name__ == '__main__':
   if args.all == 'true':
     register('turtlebot_1', 'police')
     register('turtlebot_2', 'police')
-    register('turtlebot_5', 'police')
-    register('turtlebot_6', 'police')
-    register('turtlebot_3', 'baddie')
-    register('turtlebot_4', 'baddie')
+    register('turtlebot_3', 'police')
+    register('turtlebot_4', 'police')
+    register('turtlebot_5', 'baddie')
+    register('turtlebot_6', 'baddie')
   else:
     register(args.name, args.role)

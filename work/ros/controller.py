@@ -102,8 +102,8 @@ def run(args):
   # this is used for RRT
   client_path_tuples = dict()
 
-  # the target that the police will chase
-  target = None
+  # the targets that the police will chase
+  targets = dict()
 
   # Update controller 20 times a second
   rate_limiter = rospy.Rate(20)
@@ -132,6 +132,7 @@ def run(args):
                         )
         if role == 'police':
           police[name] = temp
+          targets[name] = None
         else:
           baddies[name] = temp
           baddies_particles[name] = [baddie_localization.Particle() for _ in range(num_particles)]
@@ -143,20 +144,20 @@ def run(args):
                                     time_now)
         print("registered robot", name, "with role", role)
 
-    for name in police.keys():
-      # get the location of the bot
-      centre = police[name][2].pose[:2]
-      centre_indexes = occupancy_grid_base.get_index(centre)
-      for i in range(-1, 1):
-        for j in range(-1, 1):
-          occupancy_grid_base.values[centre_indexes[0] + i][centre_indexes[1] + j] = rrt.OCCUPIED
-    for name in baddies.keys():
-      # get the location of the bot
-      centre = baddies[name][2].pose[:2]
-      centre_indexes = occupancy_grid_base.get_index(centre)
-      for i in range(-1, 1):
-        for j in range(-1, 1):
-          occupancy_grid_base.values[centre_indexes[0] + i][centre_indexes[1] + j] = rrt.OCCUPIED
+    #for name in police.keys():
+    #  # get the location of the bot
+    #  centre = police[name][2].pose[:2]
+    #  centre_indexes = occupancy_grid_base.get_index(centre)
+    #  for i in range(-1, 1):
+    #    for j in range(-1, 1):
+    #      occupancy_grid.values[centre_indexes[0] + i][centre_indexes[1] + j] = rrt.OCCUPIED
+    #for name in baddies.keys():
+    #  # get the location of the bot
+    #  centre = baddies[name][2].pose[:2]
+    #  centre_indexes = occupancy_grid_base.get_index(centre)
+    #  for i in range(-1, 1):
+    #    for j in range(-1, 1):
+    #      occupancy_grid.values[centre_indexes[0] + i][centre_indexes[1] + j] = rrt.OCCUPIED
 
     # check if any police have caught any baddies
     caught_baddies = []
@@ -180,8 +181,9 @@ def run(args):
       time_lasted = rospy.Time.now().to_sec() - baddies[badname][3]
       del baddies[badname]
       del client_path_tuples[badname]
-      if badname == target:
-        target = None
+      for pol in targets.keys():
+        if targets[pol] == badname:
+          targets[pol] = None
 
       # for now, also delete the baddie model
       #rospy.ServiceProxy('gazebo/delete_model', DeleteModel)('turtlebot3_burger_' + badname)
@@ -192,26 +194,45 @@ def run(args):
       if gtpose.ready:
         dist = np.linalg.norm(gtpose.pose[:2] - EXIT_POSITION)
         if dist < 0.5:
-          print(name, 'escaped')
+          time_lasted = rospy.Time.now().to_sec() - baddies[badname][3]
+          print(name, 'escaped after ', time_lasted)
           del baddies[badname]
           del client_path_tuples[badname]
-          if badname == target:
-            target = None
+          for pol in targets.keys():
+            if targets[pol] == badname:
+              targets[pol] = None
 
-    # pick a baddie for all the police to chase if there isn't already one
-    if len(baddies.keys()) > 0 and target == None:
-      #for name in random.sample(baddies.keys(), len(baddies.keys())):
-      for name in sorted(baddies.keys()):
-        # TODO change baddie selection policy (closest/furthest/something else?)
-        if baddies[name][2].ready:
-          target = name
-          print('chose baddie', name, 'as target')
-          break
-      else:
-        target = None
+    ## pick a baddie for all the police to chase if there isn't already one
+    #if len(baddies.keys()) > 0 and target == None:
+    #  #for name in random.sample(baddies.keys(), len(baddies.keys())):
+    #  for name in sorted(baddies.keys()):
+    #    # TODO change baddie selection policy (closest/furthest/something else?)
+    #    if baddies[name][2].ready:
+    #      target = name
+    #      print('chose baddie', name, 'as target')
+    #      break
+    #  else:
+    #    target = None
+
+    # for each police pick the closest baddie for them to chase
+    for pol in police.keys():
+      if targets[pol] is not None:
+        continue
+      min_dist = float('inf')
+      closest = None
+      for bad in baddies.keys():
+        dist = np.linalg.norm(police[pol][2].pose[:2] - baddies[bad][2].pose[:2])
+        if dist < min_dist:
+          min_dist = dist
+          closest = bad
+
+      # set the closest baddie as this police's target
+      print(pol, 'is chasing', closest)
+      targets[pol] = closest
 
 
     # update baddie particles
+    '''
     new_time = rospy.get_time()
     for name in baddies.keys():
       gtpose = baddies[name][2]
@@ -228,23 +249,41 @@ def run(args):
     if len(all_particles) != 0:
       baddie_localization.publish_particles(np.concatenate(all_particles))
     curr_time = new_time
+    '''
 
-    baddie_gtpose = baddies[target][2] if target is not None else None
-    baddie_pose = baddie_gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map) if target is not None else None
-    baddie_particle_poses = np.array([(p.pose[:2], 1) for p in baddies_particles[target]]) if target is not None else []
-    # update police navigation
+
+
+    #---------------------------
+    #
+    # POLICE NAVIGATION
+    #
+    #---------------------------
     for name in police.keys():
       (pub, laser, gtpose, t) = police[name]
       (path, goal, time_created) = client_path_tuples[name]
+
+      target = targets[name]
+      if target is not None:
+        # TODO maybe we can also use the police's field of view? ie police can only see things in a cone around them
+        # shouldn't be too hard and might give interesting results
+        baddie_gtpose = baddies[target][2]
+        baddie_pose = baddie_gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map)
+        # baddie_particle_poses = np.array([(p.pose[:2], 1) for p in baddies_particles[target]])
+      else:
+        baddie_gtpose = None
+        baddie_pose = None
+
       other_police = dict(police)
       del other_police[name]
       other_police_pos = [(pol[2].pose[:2], 0.5) for pol in other_police.values()]
+
       u, w = 0, 0
-      if len(baddie_particle_poses) != 0 and len(baddie_particle_poses[0][0]) != 0:
+      #if baddie_pose != None and baddie_pose[1] > 0.1:
+      if baddie_pose is not None:
         u, w = police_navigation.navigate_police_2(name,
                                                    laser,
                                                    gtpose,
-                                                   baddie_pose[0],
+                                                   baddie_gtpose.pose,
                                                    client_path_tuples,
                                                    occupancy_grid_base,
                                                    MAX_ITERATIONS,
@@ -256,10 +295,17 @@ def run(args):
         vel_msg.angular.z = w
         pub.publish(vel_msg)
 
-    # update baddie navigation
+    #---------------------------
+    #
+    # BADDIE NAVIGATION
+    #
+    #---------------------------
     for name in baddies.keys():
       (pub, laser, gtpose, t) = baddies[name]
       (path, goal, time_created) = client_path_tuples[name]
+      if gtpose is not None:
+        #print(name, 'pos:', gtpose.pose[:2])
+        pass
       '''
       u, w = baddie_navigation.navigate_baddie(name,
                                                laser,
