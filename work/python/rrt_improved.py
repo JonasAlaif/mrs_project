@@ -34,6 +34,8 @@ MAX_ITERATIONS = 1000
 
 printlock = multiprocessing.Lock()
 
+#los_rejected = []
+
 def sample_random_position(occupancy_grid):
   position = np.ones(2, dtype=np.float32)
   # Get indicies of all free positions
@@ -193,7 +195,7 @@ def calc_cost(parent, child_pos, police):
     #print('pol_dist: ', police_distance)
   #police_distance = 0 # TODO calculate
   # don't actually know if this works properly
-  return parent.cost + dist + (10/(police_distance))**2
+  return parent.cost + dist + (10/(police_distance))**3
 
 # TODO rewrite this (currently just copy-pasted from https://gist.github.com/nim65s/5e9902cd67f094ce65b0)
 def seg_dist(A, B, P):
@@ -216,6 +218,7 @@ def rrt_nocircle(start_pose, goal_position, occupancy_grid, police, num_iteratio
     return start_node, None
   graph.append(start_node)
   for _ in range(num_iterations):
+    #print(len(graph))
     # With a random chance, draw the goal position.
     if np.random.rand() < .05:
       position = goal_position[:2]
@@ -230,16 +233,16 @@ def rrt_nocircle(start_pose, goal_position, occupancy_grid, police, num_iteratio
     for (n, d) in potential_parents:
       cost = calc_cost(n, position, police)
       if min_cost > cost:
-        # For the cost I use euclidean distance. It would be better to use the arc distance,
-        # but then we would have to calulate arcs for each neighbour, which is more expensive
         min_cost = cost
         u = n
     if u == None:
       #print('u is None')
+      #print('rejected because no valid parents')
       continue
     if check_line_of_sight(u.pose[:2], position[:2], occupancy_grid):
       v = Node(np.append(position, 0))
     else:
+      #print('rejected', position, ' because no LOS')
       continue
     v.cost = min_cost
     u.add_neighbor(v)
@@ -251,12 +254,18 @@ def rrt_nocircle(start_pose, goal_position, occupancy_grid, police, num_iteratio
       # Could potentially do a check that:
       # if we are not finding a better solution for a while, then break
       #break
+
+  #fig, ax = plt.subplots()
+  #occupancy_grid.draw()
+  #for pos in los_rejected:
+  #  plt.scatter(pos[0], pos[1], s=10, marker='o', color='red', zorder=1000)
+  #plt.show()
+
   if len(final_nodes) == 0:
     return start_node, None
   return start_node, min(final_nodes, key=lambda final_node: final_node.cost)
 
 def check_line_of_sight(from_pos, to_pos, obstacle_map):
-  uncertainty = 1
   curr_pos = from_pos.copy()
   step = to_pos - from_pos
   step = step / np.amax(np.abs(step)) * obstacle_map.resolution
@@ -265,7 +274,8 @@ def check_line_of_sight(from_pos, to_pos, obstacle_map):
   while step_size < np.linalg.norm(to_pos - curr_pos):
     hasCollided = not obstacle_map.is_free(curr_pos)
     if hasCollided:
-      #print('collision')
+      #print('collision at', curr_pos)
+      #los_rejected.append(to_pos)
       break
     else:
       curr_pos += step 
@@ -321,7 +331,7 @@ def parent_filter(position, (n, d)):
   return d > .2 and d < 1.5 and n.direction.dot(position - n.position) / d > 0.70710678118
 
 def parent_filter_noyaw(position, (n, d)):
-  return d > .2 and d < 4.
+  return d > .2 and d < 3.
 
 def find_circle(node_a, node_b):
   def perpendicular(v):
