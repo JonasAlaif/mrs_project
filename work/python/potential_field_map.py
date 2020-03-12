@@ -30,8 +30,13 @@ def sigmoid(x):
 def get_velocity_to_reach_goal(position, goal_positions):
   v = np.zeros(2, dtype=np.float32)
   sum_weight = 0.0
-  for (goal_pos, weight) in goal_positions:
+  for (goal, weight) in goal_positions:
     sum_weight += weight
+    if len(goal) == 3:
+      dist = np.linalg.norm(goal[:2] - position)
+      goal_pos = goal[:2] + min(5, dist * 0.7) * np.array([np.cos(goal[YAW]), np.sin(goal[YAW])])
+    else:
+      goal_pos = goal
     to_goal = goal_pos - position
     to_goal_magnitude = np.linalg.norm(to_goal)
     if to_goal_magnitude < 1e-3:
@@ -120,7 +125,7 @@ class ObstacleMap(object):
     sig_1 = int(res_inv / 4)
     blurred_map = gaussian_filter(blurred_map, sigma=sig_1)
     self._blurred_map = np.multiply(blurred_map, values)
-    gx, gy = np.gradient(self._blurred_map * res_inv * 2)
+    gx, gy = np.gradient(self._blurred_map * res_inv * 2.2)
 
     ggx = np.gradient(gx)[0]
     ggy = np.gradient(gy)[1]

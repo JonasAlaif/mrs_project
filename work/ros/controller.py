@@ -50,7 +50,8 @@ Y = 1
 YAW = 2
 
 
-MAX_BADDIE_SPEED = 1.2
+MAX_POLICE_SPEED = 0.3
+MAX_BADDIE_SPEED = 0.5
 
 EXIT_POSITION = np.array([9.0, 0.0])
 
@@ -249,8 +250,8 @@ def run(args):
       all_police_positions_weighted = np.array([(pol[2].pose[:2], 0.5) for pol in police.values()])
       all_police_positions = np.array([pol[2].pose[:2] for pol in police.values()])
 
+    '''
     # update baddie particles
-    
     new_time = rospy.get_time()
     for name in baddies.keys():
       gtpose = baddies[name][2]
@@ -267,7 +268,7 @@ def run(args):
     if len(all_particles) != 0:
       baddie_localization.publish_particles(np.concatenate(all_particles))
     curr_time = new_time
-    
+    '''
 
 
 
@@ -284,23 +285,25 @@ def run(args):
       if target is not None:
         # TODO maybe we can also use the police's field of view? ie police can only see things in a cone around them
         # shouldn't be too hard and might give interesting results
-        baddie_poses = np.array([(baddies[target][2].pose[:2], 1)])
+        baddie_poses = np.array([(baddies[target][2].pose, 1)])
         # baddie_poses = baddie_gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map)
-        baddie_particle_poses = np.array([(p.pose[:2], 1) for p in baddies_particles[target]])
+        baddie_particle_poses = np.array([(p.pose, 1) for p in baddies_particles[target]])
       else:
         baddie_poses = None
 
+      nav_goals = baddie_poses
       u, w = 0, 0
       #if baddie_pose != None and baddie_pose[1] > 0.1:
       if baddie_poses is not None:
         u, w = police_navigation.navigate_police_2(name,
                                                    laser,
                                                    gtpose,
-                                                   baddie_particle_poses,
+                                                   nav_goals,
                                                    client_path_tuples,
                                                    occupancy_grid_base,
                                                    MAX_ITERATIONS,
-                                                   all_police_positions_weighted)
+                                                   all_police_positions_weighted,
+                                                   MAX_POLICE_SPEED)
 
       if u is not None and w is not None:
         vel_msg = Twist()
@@ -325,12 +328,13 @@ def run(args):
                                                gtpose,
                                                client_path_tuples,
                                                occupancy_grid_base,
-                                               MAX_ITERATIONS)'''
+                                               MAX_ITERATIONS,
+                                               MAX_BADDIE_SPEED)'''
       other_baddies = dict(baddies)
       del other_baddies[name]
       police_pos = [(pol[2].pose[:2], 1.5) for pol in police.values()]
-      baddies_pos = [(bad[2].pose[:2], 1) for bad in other_baddies.values()]
-
+      baddies_pos = [(bad[2].pose[:2], 0.8) for bad in other_baddies.values()]
+      '''
       u, w = baddie_navigation.navigate_baddie_hybrid(name,
                                                       laser,
                                                       gtpose,
@@ -338,11 +342,22 @@ def run(args):
                                                       occupancy_grid_base,
                                                       MAX_ITERATIONS,
                                                       police_pos,
-                                                      baddies_pos)
+                                                      baddies_pos,
+                                                      MAX_BADDIE_SPEED)'''
+
+      u, w = baddie_navigation.navigate_baddie_pot_nai(None,
+                                                      None,
+                                                      gtpose,
+                                                      EXIT_POSITION,
+                                                      None,
+                                                      None,
+                                                      None,
+                                                      police_pos + baddies_pos,
+                                                      MAX_BADDIE_SPEED)
 
       if u is not None and w is not None:
         vel_msg = Twist()
-        vel_msg.linear.x = MAX_BADDIE_SPEED * u
+        vel_msg.linear.x = u
         vel_msg.angular.z = w
         pub.publish(vel_msg)
 
