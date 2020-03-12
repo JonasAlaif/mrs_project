@@ -124,7 +124,7 @@ def update_particles(particles, dt, measured_pose, scale, num_particles, occupan
   j = 0
   for m in range(len(particles)):
     next_boundary = random_weight + m * total_weight / num_particles
-    while next_boundary > current_boundary: 
+    while next_boundary > current_boundary:
       j = j + 1
       if j >= num_particles:
         j = num_particles - 1
@@ -201,7 +201,7 @@ def run(args):
     j = 0
     for m in range(len(particles)):
       next_boundary = random_weight + m * total_weight / num_particles
-      while next_boundary > current_boundary: 
+      while next_boundary > current_boundary:
         j = j + 1
         if j >= num_particles:
           j = num_particles - 1

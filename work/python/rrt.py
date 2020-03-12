@@ -215,6 +215,44 @@ def rrt(start_pose, goal_position, occupancy_grid, num_iterations=MAX_ITERATIONS
   return start_node, final_node
 
 
+def rrt_straightline(start_pose, goal_position, occupancy_grid, num_iterations=MAX_ITERATIONS):
+  # RRT builds a graph one node at a time.
+  graph = []
+  start_node = Node(start_pose)
+  final_node = None
+  if not occupancy_grid.is_free(goal_position):
+    print('Goal position is not in the free space.')
+    return start_node, final_node
+  graph.append(start_node)
+  for _ in range(num_iterations):
+    position = sample_random_position(occupancy_grid)
+    # With a random chance, draw the goal position.
+    if np.random.rand() < .05:
+      position = goal_position
+    # Find closest node in graph.
+    # In practice, one uses an efficient spatial structure (e.g., quadtree).
+    potential_parent = sorted(((n, np.linalg.norm(position - n.position)) for n in graph), key=lambda x: x[1])
+    # Pick a node at least some distance away but not too far.
+    # We also verify that the angles are aligned (within pi / 4).
+    u = None
+    for n, d in potential_parent:
+      if d > .2 and d < 1.5 and n.direction.dot(position - n.position) / d > 0.70710678118:
+        u = n
+        break
+    else:
+      continue
+    v = adjust_pose(u, position, occupancy_grid)
+    if v is None:
+      continue
+    u.add_neighbor(v)
+    v.parent = u
+    graph.append(v)
+    if np.linalg.norm(v.position - goal_position) < .2:
+      final_node = v
+      break
+  return start_node, final_node
+
+
 def find_circle(node_a, node_b):
   def perpendicular(v):
     w = np.empty_like(v)

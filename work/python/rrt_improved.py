@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+
 import argparse
 import matplotlib.pylab as plt
 import matplotlib.patches as patches
@@ -9,7 +10,11 @@ import numpy as np
 import os
 import re
 import scipy.signal
+import time
 import yaml
+
+import multiprocessing
+import threading
 
 
 # Constants used for indexing.
@@ -23,10 +28,11 @@ UNKNOWN = 1
 OCCUPIED = 2
 
 ROBOT_RADIUS = 0.105 / 2.
-GOAL_POSITION = np.array([1.5, 1.5], dtype=np.float32)  # Any orientation is good.
-START_POSE = np.array([-1.5, -1.5, 0], dtype=np.float32)
-MAX_ITERATIONS = 500
+GOAL_POSITION = np.array([-7.5, -7.4], dtype=np.float32)  # Any orientation is good.
+START_POSE = np.array([6.5, 7.5, 0], dtype=np.float32)
+MAX_ITERATIONS = 1000
 
+printlock = multiprocessing.Lock()
 
 def sample_random_position(occupancy_grid):
   position = np.ones(2, dtype=np.float32)
@@ -176,6 +182,94 @@ class Node(object):
   def cost(self, c):
     self._cost = c
 
+def calc_cost(parent, child_pos, police):
+  dist = np.linalg.norm(parent.position - child_pos)
+  police_distance = float('inf')
+  for pol in police:
+    # TODO rewrite this (currently just copy-pasted from https://gist.github.com/nim65s/5e9902cd67f094ce65b0)
+    pol_d = seg_dist(parent.position, child_pos, pol[0])
+    if pol_d < police_distance:
+      police_distance = pol_d
+    #print('pol_dist: ', police_distance)
+  #police_distance = 0 # TODO calculate
+  # don't actually know if this works properly
+  return parent.cost + dist + (10/(police_distance))**2
+
+# TODO rewrite this (currently just copy-pasted from https://gist.github.com/nim65s/5e9902cd67f094ce65b0)
+def seg_dist(A, B, P):
+  """ segment line AB, point P, where each one is an array([x, y]) """
+  if all(A == P) or all(B == P):
+    return 0
+  if np.arccos(np.dot((P - A) / np.linalg.norm(P - A), (B - A) / np.linalg.norm(B - A))) > np.pi / 2:
+    return np.linalg.norm(P - A)
+  if np.arccos(np.dot((P - B) / np.linalg.norm(P - B), (A - B) / np.linalg.norm(A - B))) > np.pi / 2:
+    return np.linalg.norm(P - B)
+  return np.linalg.norm(np.cross(A-B, A-P))/np.linalg.norm(B-A)
+
+def rrt_nocircle(start_pose, goal_position, occupancy_grid, police, num_iterations=MAX_ITERATIONS):
+  # RRT builds a graph one node at a time.
+  graph = []
+  start_node = Node(start_pose)
+  final_nodes = []
+  if not occupancy_grid.is_free(goal_position[:2]):
+    print('Goal position is not in the free space.')
+    return start_node, None
+  graph.append(start_node)
+  for _ in range(num_iterations):
+    # With a random chance, draw the goal position.
+    if np.random.rand() < .05:
+      position = goal_position[:2]
+    else:
+      position = sample_random_position(occupancy_grid)
+    # Find closest (with respect to cost) node in graph.
+    # In practice, one uses an efficient spatial structure (e.g., quadtree).
+    graph_dists = [(n, np.linalg.norm(position - n.position)) for n in graph]
+    potential_parents = filter(lambda (n, d): parent_filter_noyaw(position, (n, d)), graph_dists)
+    min_cost = float('inf')
+    u = None
+    for (n, d) in potential_parents:
+      cost = calc_cost(n, position, police)
+      if min_cost > cost:
+        # For the cost I use euclidean distance. It would be better to use the arc distance,
+        # but then we would have to calulate arcs for each neighbour, which is more expensive
+        min_cost = cost
+        u = n
+    if u == None:
+      #print('u is None')
+      continue
+    if check_line_of_sight(u.pose[:2], position[:2], occupancy_grid):
+      v = Node(np.append(position, 0))
+    else:
+      continue
+    v.cost = min_cost
+    u.add_neighbor(v)
+    v.parent = u
+    graph.append(v)
+    if np.linalg.norm(v.position - goal_position[:2]) < .2:
+      final_nodes.append(v)
+      # Uncomment 'break' for reduced optimality but faster execution
+      # Could potentially do a check that:
+      # if we are not finding a better solution for a while, then break
+      #break
+  if len(final_nodes) == 0:
+    return start_node, None
+  return start_node, min(final_nodes, key=lambda final_node: final_node.cost)
+
+def check_line_of_sight(from_pos, to_pos, obstacle_map):
+  uncertainty = 1
+  curr_pos = from_pos.copy()
+  step = to_pos - from_pos
+  step = step / np.amax(np.abs(step)) * obstacle_map.resolution
+  step_size = np.linalg.norm(step)
+  hasCollided = False
+  while step_size < np.linalg.norm(to_pos - curr_pos):
+    hasCollided = not obstacle_map.is_free(curr_pos)
+    if hasCollided:
+      #print('collision')
+      break
+    else:
+      curr_pos += step 
+  return not hasCollided
 
 def rrt(start_pose, goal_position, occupancy_grid, num_iterations=MAX_ITERATIONS):
   # RRT builds a graph one node at a time.
@@ -226,6 +320,9 @@ def rrt(start_pose, goal_position, occupancy_grid, num_iterations=MAX_ITERATIONS
 def parent_filter(position, (n, d)):
   return d > .2 and d < 1.5 and n.direction.dot(position - n.position) / d > 0.70710678118
 
+def parent_filter_noyaw(position, (n, d)):
+  return d > .2 and d < 4.
+
 def find_circle(node_a, node_b):
   def perpendicular(v):
     w = np.empty_like(v)
@@ -268,27 +365,28 @@ def read_pgm(filename, byteorder='>'):
   return img.astype(np.float32) / 255.
 
 
-def draw_solution(start_node, final_node=None):
+def draw_solution(start_node, police, final_node=None):
   ax = plt.gca()
 
   def draw_path(u, v, arrow_length=.1, color=(.8, .8, .8), lw=1):
-    du = u.direction
-    plt.arrow(u.pose[X], u.pose[Y], du[0] * arrow_length, du[1] * arrow_length,
-              head_width=.05, head_length=.1, fc=color, ec=color)
-    dv = v.direction
-    plt.arrow(v.pose[X], v.pose[Y], dv[0] * arrow_length, dv[1] * arrow_length,
-              head_width=.05, head_length=.1, fc=color, ec=color)
-    center, radius = find_circle(u, v)
-    du = u.position - center
-    theta1 = np.arctan2(du[1], du[0])
-    dv = v.position - center
-    theta2 = np.arctan2(dv[1], dv[0])
-    # Check if the arc goes clockwise.
-    if np.cross(u.direction, du).item() > 0.:
-      theta1, theta2 = theta2, theta1
-    ax.add_patch(patches.Arc(center, radius * 2., radius * 2.,
-                             theta1=theta1 / np.pi * 180., theta2=theta2 / np.pi * 180.,
-                             color=color, lw=lw))
+    #du = u.direction
+    #plt.arrow(u.pose[X], u.pose[Y], du[0] * arrow_length, du[1] * arrow_length,
+    #          head_width=.05, head_length=.1, fc=color, ec=color)
+    #dv = v.direction
+    #plt.arrow(v.pose[X], v.pose[Y], dv[0] * arrow_length, dv[1] * arrow_length,
+    #          head_width=.05, head_length=.1, fc=color, ec=color)
+    #center, radius = find_circle(u, v)
+    #du = u.position - center
+    #theta1 = np.arctan2(du[1], du[0])
+    #dv = v.position - center
+    #theta2 = np.arctan2(dv[1], dv[0])
+    ## Check if the arc goes clockwise.
+    #if np.cross(u.direction, du).item() > 0.:
+    #  theta1, theta2 = theta2, theta1
+    #ax.add_patch(patches.Arc(center, radius * 2., radius * 2.,
+    #                         theta1=theta1 / np.pi * 180., theta2=theta2 / np.pi * 180.,
+    #                         color=color, lw=lw))
+    plt.arrow(u.pose[X], u.pose[Y], v.pose[X] - u.pose[X], v.pose[Y] - u.pose[Y], head_width = 0.05, head_length = 0.1, fc=color, ec=color)
 
   points = []
   s = [(start_node, None)]  # (node, parent).
@@ -304,6 +402,9 @@ def draw_solution(start_node, final_node=None):
     for w in v.neighbors:
       s.append((w, v))
 
+  for p in police:
+    plt.scatter(p[0][0], p[0][1], s=10, marker='o', color=[1, 0, 0])
+
   points = np.array(points)
   plt.scatter(points[:, 0], points[:, 1], s=10, marker='o', color=(.8, .8, .8))
   if final_node is not None:
@@ -314,10 +415,22 @@ def draw_solution(start_node, final_node=None):
       draw_path(v.parent, v, color='k', lw=2)
       v = v.parent
 
+def run_thread(values, times, i, num_i, j, num_j, start, end, occ, numiter):
+  #print("start")
+  time_start = time.time() * 1000
+  start_node, end_node = rrt_nocircle(start, end, occ, num_iterations = numiter)
+  time_end = time.time() * 1000
+  #print("end")
+  #values[j][i] = end_node is None
+  printlock.acquire()
+  print(j, ',', i, 'time:', time_end - time_start, 'ms', 'finished:', end_node is not None)
+  printlock.release()
+  return end_node is None, time_end - time_start
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Uses RRT to reach the goal.')
-  parser.add_argument('--map', action='store', default='map', help='Which map to use.')
+  parser.add_argument('--map', action='store', default='map_city_3', help='Which map to use.')
   args, unknown = parser.parse_known_args()
 
   # Load map.
@@ -334,21 +447,48 @@ if __name__ == '__main__':
   occupancy_grid = occupancy_grid[:, ::-1]
   occupancy_grid = OccupancyGrid(occupancy_grid, data['origin'], data['resolution'])
 
+  start_node, final_node = rrt_nocircle(START_POSE, GOAL_POSITION, occupancy_grid)
+
   # Run RRT.
-  start_node, final_node = rrt(START_POSE, GOAL_POSITION, occupancy_grid)
+  num_j = 7
+  num_i = 100
+  iterations = 500
+  #times = multiprocessing.Array('d', num_i * num_j)
+  #values = multiprocessing.Array('d', num_i * num_j * 2)
+  times = np.zeros((num_i, num_j))
+  values = np.zeros((num_i, num_j, 2))
+  p = multiprocessing.Pool(6)
+  for j in range(num_j):
+    for i in range(num_i):
+      p.apply_async(func=run_thread, args=(values, times, i, num_i, j, num_j, START_POSE, GOAL_POSITION, occupancy_grid, iterations))
+    iterations += 500
+  
+  p.close()
+  p.join()
 
-  # Plot environment.
-  fig, ax = plt.subplots()
-  occupancy_grid.draw()
-  plt.scatter(.3, .2, s=10, marker='o', color='green', zorder=1000)
-  draw_solution(start_node, final_node)
-  plt.scatter(START_POSE[0], START_POSE[1], s=10, marker='o', color='green', zorder=1000)
-  plt.scatter(GOAL_POSITION[0], GOAL_POSITION[1], s=10, marker='o', color='red', zorder=1000)
+  #print(values)
+  #print(times)
 
-  plt.axis('equal')
-  plt.xlabel('x')
-  plt.ylabel('y')
-  plt.xlim([-.5 - 2., 2. + .5])
-  plt.ylim([-.5 - 2., 2. + .5])
-  plt.show()
+
+  for j in range(num_j):
+    counter = sum(values)
+    time_total = sum(times)
+    #print('counter:', counter, 'ave time:', time_total/num_i)
+  
+
+
+  ## Plot environment.
+  #fig, ax = plt.subplots()
+  #occupancy_grid.draw()
+  #plt.scatter(.3, .2, s=10, marker='o', color='green', zorder=1000)
+  #draw_solution(start_node, final_node)
+  #plt.scatter(START_POSE[0], START_POSE[1], s=10, marker='o', color='green', zorder=1000)
+  #plt.scatter(GOAL_POSITION[0], GOAL_POSITION[1], s=10, marker='o', color='red', zorder=1000)
+
+  #plt.axis('equal')
+  #plt.xlabel('x')
+  #plt.ylabel('y')
+  #plt.xlim([-.5 - 2., 2. + .5])
+  #plt.ylim([-.5 - 2., 2. + .5])
+  #plt.show()
 

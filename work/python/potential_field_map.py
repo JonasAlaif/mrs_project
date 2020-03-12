@@ -49,7 +49,7 @@ def get_velocity_to_avoid_positions(position, other_positions):
   sum_weight = 0.0
   for (other_pos, weight) in other_positions:
     sum_weight += weight
-    from_other = position - other_pos
+    from_other = position[:2] - other_pos[:2]
     from_other_magnitude = np.linalg.norm(from_other)
     from_other_right = np.array((from_other[1], -from_other[0]))
     if from_other_magnitude < 1e-3:
@@ -67,7 +67,7 @@ def get_velocity_to_avoid_positions(position, other_positions):
 
 def get_velocity_to_avoid_obstacles(position, obstacle_map):
   v = np.zeros(2, dtype=np.float32)
-  v = MAX_SPEED * obstacle_map.get_gradient(position)
+  v = MAX_SPEED * obstacle_map.get_gradient(position[:2])
   return v
 
 
@@ -90,7 +90,7 @@ def get_velocity(position, goal_positions, avoid_positions, obstacle_map, mode='
     v_goal = get_velocity_to_reach_goal(position, goal_positions)
   else:
     v_goal = np.zeros(2, dtype=np.float32)
-  if mode in ('obstacle', 'all'):
+  if mode in ('friendlies', 'obstacle', 'all'):
     v_avoid = get_velocity_to_avoid_obstacles(position, obstacle_map)
   else:
     v_avoid = np.zeros(2, dtype=np.float32)
@@ -98,7 +98,9 @@ def get_velocity(position, goal_positions, avoid_positions, obstacle_map, mode='
     v_avoid_friends = get_velocity_to_avoid_positions(position, avoid_positions)
   else:
     v_avoid_friends = np.zeros(2, dtype=np.float32)
-  v = v_goal + v_avoid + v_avoid_friends
+  v = v_goal
+  v += v_avoid
+  v += v_avoid_friends
   return cap(v, max_speed=MAX_SPEED)
 
 
@@ -126,7 +128,7 @@ class ObstacleMap(object):
     minima_in_y = np.argwhere(np.logical_and(np.abs(gy) < 0.2, ggy < -0.095))
     self._minima = np.concatenate((minima_in_x, minima_in_y), axis=0)
     self._values = np.stack([gx, gy], axis=-1)
-    
+
     self._origin = np.array(origin[:2], dtype=np.float32)
     self._origin -= resolution / 2.
     assert origin[YAW] == 0.

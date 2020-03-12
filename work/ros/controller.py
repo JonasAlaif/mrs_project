@@ -26,7 +26,6 @@ directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, directory)
 try:
   import obstacle_avoidance
-  import rrt_navigation
   import baddie_navigation
   import police_navigation
   import baddie_localization
@@ -35,10 +34,8 @@ except ImportError:
 
 directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../python')
 sys.path.insert(0, directory)
-try:
-  import rrt
-except ImportError:
-  raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
+import rrt
+import rrt_navigation
 
 # Constants for occupancy grid.
 FREE = 0
@@ -46,23 +43,29 @@ UNKNOWN = 1
 OCCUPIED = 2
 
 MAX_ITERATIONS = 1500
-EPSILON = 0.1
+EPSILON = 0.15
 
 X = 0
 Y = 1
 YAW = 2
 
+
 SPEED = 0.1
+
+EXIT_POSITION = np.array([9.0, 0.0])
 
 def run(args):
   obstacle_map = police_navigation.initialize()
+  baddie_navigation.initialize()
   baddie_localization.initialize()
+
   avoidance_method = getattr(obstacle_avoidance, args.mode)
   rospy.init_node('controller')
   occupancy_grid_base = None
   if args.map is not None:
     # Load map.
     with open(args.map + '.yaml') as fp:
+      print('using file', args.map+'.yaml')
       filedata = yaml.load(fp)
     img = rrt.read_pgm(os.path.join(os.path.dirname(args.map), filedata['image']))
     occupancy_grid_base = np.empty_like(img, dtype=np.int8)
@@ -70,9 +73,9 @@ def run(args):
     occupancy_grid_base[img < .1] = OCCUPIED
     occupancy_grid_base[img > .9] = FREE
     # Transpose (undo ROS processing).
-    occupancy_grid_base = occupancy_grid_base.T
+    #occupancy_grid_base = occupancy_grid_base.T
     # Invert Y-axis.
-    occupancy_grid_base = occupancy_grid_base[:, ::-1]
+    #occupancy_grid_base = occupancy_grid_base[:, ::-1]
     occupancy_grid_base = rrt.OccupancyGrid(occupancy_grid_base, filedata['origin'], filedata['resolution'])
 
 
@@ -124,7 +127,8 @@ def run(args):
         role = split[1]
         temp = (rospy.Publisher('/' + name + '/cmd_vel', Twist, queue_size=5),
                          obstacle_avoidance.SimpleLaser(name),
-                         obstacle_avoidance.GroundtruthPose('turtlebot3_burger_' + name)
+                         obstacle_avoidance.GroundtruthPose('turtlebot3_burger_' + name),
+                         rospy.Time.now().to_sec()
                         )
         if role == 'police':
           police[name] = temp
@@ -173,20 +177,35 @@ def run(args):
 
     # remove baddies that were caught
     for badname in caught_baddies:
+      time_lasted = rospy.Time.now().to_sec() - baddies[badname][3]
       del baddies[badname]
       del client_path_tuples[badname]
       if badname == target:
         target = None
 
       # for now, also delete the baddie model
-      rospy.ServiceProxy('gazebo/delete_model', DeleteModel)('turtlebot3_burger_' + badname)
+      #rospy.ServiceProxy('gazebo/delete_model', DeleteModel)('turtlebot3_burger_' + badname)
+      print('baddie', name, 'lasted', time_lasted, 'seconds')
+
+    for badname in baddies.keys():
+      (pub, laser, gtpose, t) = baddies[badname]
+      if gtpose.ready:
+        dist = np.linalg.norm(gtpose.pose[:2] - EXIT_POSITION)
+        if dist < 0.5:
+          print(name, 'escaped')
+          del baddies[badname]
+          del client_path_tuples[badname]
+          if badname == target:
+            target = None
 
     # pick a baddie for all the police to chase if there isn't already one
     if len(baddies.keys()) > 0 and target == None:
-      for name in random.sample(baddies.keys(), len(baddies.keys())):
+      #for name in random.sample(baddies.keys(), len(baddies.keys())):
+      for name in sorted(baddies.keys()):
         # TODO change baddie selection policy (closest/furthest/something else?)
         if baddies[name][2].ready:
           target = name
+          print('chose baddie', name, 'as target')
           break
       else:
         target = None
@@ -215,7 +234,7 @@ def run(args):
     baddie_particle_poses = np.array([(p.pose[:2], 1) for p in baddies_particles[target]]) if target is not None else []
     # update police navigation
     for name in police.keys():
-      (pub, laser, gtpose) = police[name]
+      (pub, laser, gtpose, t) = police[name]
       (path, goal, time_created) = client_path_tuples[name]
       other_police = dict(police)
       del other_police[name]
@@ -223,12 +242,14 @@ def run(args):
       u, w = 0, 0
       if len(baddie_particle_poses) != 0 and len(baddie_particle_poses[0][0]) != 0:
         u, w = police_navigation.navigate_police_2(name,
-                                               gtpose,
-                                               laser,
-                                               baddie_particle_poses,
-                                               client_path_tuples,
-                                               occupancy_grid_base,
-                                               MAX_ITERATIONS, other_police_pos)
+                                                   laser,
+                                                   gtpose,
+                                                   baddie_pose[0],
+                                                   client_path_tuples,
+                                                   occupancy_grid_base,
+                                                   MAX_ITERATIONS,
+                                                   other_police_pos)
+
       if u is not None and w is not None:
         vel_msg = Twist()
         vel_msg.linear.x = u
@@ -237,24 +258,32 @@ def run(args):
 
     # update baddie navigation
     for name in baddies.keys():
-      (pub, laser, gtpose) = baddies[name]
+      (pub, laser, gtpose, t) = baddies[name]
       (path, goal, time_created) = client_path_tuples[name]
       '''
       u, w = baddie_navigation.navigate_baddie(name,
                                                laser,
                                                gtpose,
                                                client_path_tuples,
-                                               occupancy_grid,
-                                               MAX_ITERATIONS)'''
-      police_pos = [(pol[2].pose[:2], 1.6) for pol in police.values()]
-      goal_pos = np.array([(goal[:2], 1)])
-      u, w = police_navigation.navigate_police_2(name,
-                                               gtpose,
-                                               laser,
-                                               goal_pos,
-                                               client_path_tuples,
                                                occupancy_grid_base,
-                                               MAX_ITERATIONS, police_pos)
+                                               MAX_ITERATIONS)'''
+      other_baddies = dict(baddies)
+      del other_baddies[name]
+      police_pos = [(pol[2].pose[:2], 1.5) for pol in police.values()]
+      baddies_pos = [(bad[2].pose[:2], 1) for bad in other_baddies.values()]
+      avoid_pos = police_pos + baddies_pos
+
+      class Struct(object): pass
+      goal = Struct()
+      goal.pose = EXIT_POSITION
+      u, w = baddie_navigation.navigate_baddie_hybrid(name,
+                                                      laser,
+                                                      gtpose,
+                                                      #goal,
+                                                      client_path_tuples,
+                                                      occupancy_grid_base,
+                                                      MAX_ITERATIONS,
+                                                      avoid_pos)
 
       if u is not None and w is not None:
         vel_msg = Twist()

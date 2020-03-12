@@ -16,10 +16,12 @@ import yaml
 
 import matplotlib.pylab as plt
 
+import gazebo_msgs.srv
+from std_srvs.srv import Empty, EmptyRequest
+
 # Robot motion commands:
 # http://docs.ros.org/api/geometry_msgs/html/msg/Twist.html
 from geometry_msgs.msg import Twist
-from gazebo_msgs.srv import DeleteModel
 
 directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, directory)
@@ -33,17 +35,37 @@ directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../python
 sys.path.insert(0, directory)
 try:
   import rrt
+  import rrt_improved
+  import potential_field_map
 except ImportError:
   raise ImportError('Unable to import obstacle_avoidance.py. Make sure this file is in "{}"'.format(directory))
 
 MAX_ITERATIONS = 1500
-EPSILON = 0.1
+EPSILON = 0.15
 
 X = 0
 Y = 1
 YAW = 2
 
-SPEED = 0.1
+SPEED = 0.2
+
+#EXIT_POSITION = np.array([9.0, 0.0])
+EXIT_POSITION = np.array([9.0, 0.0, 0.0])
+
+obstacle_map = None
+pause_srv = None
+unpause_srv = None
+
+def initialize():
+  global obstacle_map
+  global pause_srv
+  global unpause_srv
+  obstacle_map = potential_field_map.initialize('/home/ivan/catkin_ws/src/mrs_project/work/python/map_city_3')
+  pause_srv = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
+  print('pause_srv:', pause_srv)
+  unpause_srv = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
+  print('unpause_srv:', unpause_srv)
+  #potential_field_map.display_obst_map(obstacle_map)
 
 '''
 TODO upgrade this documentation if the description of this function changes
@@ -60,14 +82,14 @@ Arguments:
     occupancy_grid - the occupancy grid of the map
     max_iterations - the maximum number of times the rrt function should iterate
 '''
-def navigate_baddie(name, laser, gtpose, paths, occupancy_grid, max_iterations):
+def navigate_baddie_rrt(name, laser, gtpose, paths, occupancy_grid, max_iterations):
   (path, goal, time_created) = paths[name]
 
   # get curret time (for updating path)
   time_now = rospy.Time.now().to_sec()
   # check if current goal has been reached
   if gtpose.ready:
-    goal_reached = np.linalg.norm(gtpose.pose[:2] - goal) < 0.2
+    goal_reached = np.linalg.norm(gtpose.pose[:2] - goal[:2]) < 0.3
   else:
     goal_reached = None
 
@@ -99,3 +121,142 @@ def navigate_baddie(name, laser, gtpose, paths, occupancy_grid, max_iterations):
     return u, w
   else:
     return None, None
+
+
+def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_iterations, police):
+  (path, goal, time_created) = paths[name]
+  #print('navigating baddie')
+
+  # get curret time (for updating path)
+  time_now = rospy.Time.now().to_sec()
+  # check if current goal has been reached
+  if gtpose.ready:
+    goal_reached = np.linalg.norm(gtpose.pose[:2] - goal[:2]) < 0.3
+  else:
+    goal_reached = None
+
+  # generate a new goal if needed
+  new_goal = None
+  if goal_reached or path is None or len(path) == 0:
+    # generate a new random goal
+    #new_goal = rrt_improved.sample_random_position(occupancy_grid)[:2]
+    new_goal = EXIT_POSITION
+    goal = new_goal
+  # if we selected a new goal or it's been a while since we last calculated a path, update our path
+  if new_goal is not None or (time_now - time_created > 10 and goal is not None):
+    if gtpose.ready:
+      global pause_srv
+      global unpause_srv
+      if pause_srv is not None:
+        pause_srv(EmptyRequest())
+        print('paused')
+      start_node, end_node = rrt_improved.rrt_nocircle(gtpose.pose, goal, occupancy_grid, police, max_iterations)
+      if unpause_srv is not None:
+        unpause_srv(EmptyRequest())
+        print('unpaused')
+      #start_node, end_node = rrt_improved.rrt_nocircle(np.array([-7.5, -7.4], dtype=np.float32),
+      #                                                 np.array([6.5, 7.5], dtype=np.float32),
+      #                                                 occupancy_grid, max_iterations)
+      print(end_node is None)
+      new_path = rrt_navigation.get_path(end_node)
+      paths[name] = (new_path, goal, time_now)
+      if new_path is not None:
+        if end_node is not None:
+          print(new_path)
+        path = new_path
+        print('path updated for', name)
+
+        #pause_srv(EmptyRequest())
+        ## Plot environment.
+        #fig, ax = plt.subplots()
+        #occupancy_grid.draw()
+        #plt.scatter(.3, .2, s=10, marker='o', color='green', zorder=1000)
+        #rrt_improved.draw_solution(start_node, police, end_node)
+        #plt.scatter(gtpose.pose[0], gtpose.pose[1], s=10, marker='o', color='green', zorder=1000)
+        #plt.scatter(goal[0], goal[1], s=10, marker='o', color='red', zorder=1000)
+
+        #plt.axis('equal')
+        #plt.xlabel('x')
+        #plt.ylabel('y')
+        #plt.xlim([-.5 - 2., 2. + .5])
+        #plt.ylim([-.5 - 2., 2. + .5])
+        #plt.show()
+        #unpause_srv(EmptyRequest())
+      else:
+        print(name, 'ground truth not ready for goal setting')
+
+  if path is not None and len(path) > 0 and gtpose.ready:
+    # find distance to first element in path
+    lin_pos = np.array([gtpose.pose[X] + EPSILON*np.cos(gtpose.pose[YAW]),
+                        gtpose.pose[Y] + EPSILON*np.sin(gtpose.pose[YAW]),
+                        gtpose.pose[YAW]])
+    dist = np.linalg.norm(lin_pos[:2] - path[0][:2])
+    #print(dist)
+    if dist < 0.3:
+      print('got close')
+      print('gtpose', gtpose.pose[:2], 'next', path[0])
+      # delete the current point from the path
+      del path[0]
+      print(path)
+      # update the paths
+      paths[name] = (path, goal, time_now)
+      if len(path) == 0:
+        print('got to the end of the path')
+        return None, None
+
+    v = potential_field_map.get_velocity(lin_pos, path[0][:2], police, obstacle_map, mode='obstacle')
+    u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
+    return u, w
+  elif gtpose.ready:
+    #class Struct(object): pass
+    #goalstruct = Struct()
+    #goalstruct.pose = goal[:2]
+    return navigate_baddie_pot_nai(name, laser, gtpose, goal[:2], paths, occupancy_grid, max_iterations, police)
+  else:
+    return None, None
+
+
+def sigmoid(x):
+  return np.tanh(x/2)
+
+def baddie_braitenberg(name, laser, gtpose, paths, occupancy_grid, max_iterations, police):
+  (front, front_left, front_right, left, right) = laser.measurements
+  # u in [m/s]
+  # w in [rad/s] going counter-clockwise.
+  closestDistSide = 0.05
+  closestDistFront = 0.4
+  u = sigmoid(front-closestDistFront) * sigmoid(front_left+closestDistSide) * sigmoid(front_right+closestDistSide) * 1
+  w = sigmoid(5/front_right + 1/sigmoid(right) - 5/front_left - 1/sigmoid(left))
+  return u, w
+
+  
+def navigate_baddie_pot_nai(name, laser, gtpose, goal, paths, occupancy_grid, max_iterations, other_police):
+  if goal is None:
+    return 0, 0
+  global obstacle_map
+  control_pos = gtpose.pose[:2] + np.array([EPSILON*np.cos(gtpose.pose[YAW]), EPSILON*np.sin(gtpose.pose[YAW])]) / 3
+  v = potential_field_map.get_velocity(control_pos, goal, other_police, obstacle_map, mode='all')
+  u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
+  #print('My pos: ', control_pos)
+  #print('Target pos: ', baddie_gtp.pose[:2])
+  #print('Direction pos: ', v)
+  return u, w
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
