@@ -16,9 +16,10 @@ X = 0
 Y = 1
 YAW = 2
 
-WALL_OFFSET = 8.5
+WALL_OFFSET = 8.7
 GOAL_POSITION = np.array([9, 0], dtype=np.float32)
-START_POSITION = np.array([-7.5, 3.5], dtype=np.float32)
+START_POSITION = np.array([-7.5, 5.35], dtype=np.float32)
+START_POSITION_2 = np.array([-7.5, 7.5], dtype=np.float32)
 MAX_SPEED = 2.
 
 ROBOT_RADIUS = 0.105 / 2.
@@ -51,7 +52,7 @@ def get_velocity_to_avoid_positions(position, other_positions):
       continue
     # Normalise velocity to be <= MAX_SPEED
     from_other_unit = (from_other + from_other_right * .1) / (from_other_magnitude * 1.1)
-    dropoff = max(1, from_other_magnitude / 4.0)
+    dropoff = max(1, from_other_magnitude - 4.0)
     away_speed = weight * from_other_unit / dropoff
     v += away_speed
   v_magnitude = np.linalg.norm(v)
@@ -107,14 +108,23 @@ class ObstacleMap(object):
 
     # Inflate obstacles (using a convolution).
     res_inv = 1.0 / resolution
-    blurred_map = values.copy()
+    occupancy_map = values.copy()
     w = 2 * int(ROBOT_RADIUS / resolution) + 1
-    blurred_map = minimum_filter(blurred_map, w)
+    self._occupancy_map = minimum_filter(occupancy_map, w)
+
+    blurred_map = self._occupancy_map.copy()
     sig_1 = int(res_inv / 4)
-    self._blurred_map = gaussian_filter(blurred_map, sigma=sig_1)
-    gx, gy = np.gradient(self._blurred_map * res_inv * 3)
+    blurred_map = gaussian_filter(blurred_map, sigma=sig_1)
+    self._blurred_map = np.multiply(blurred_map, values)
+    gx, gy = np.gradient(self._blurred_map * res_inv * 2)
+
+    ggx = np.gradient(gx)[0]
+    ggy = np.gradient(gy)[1]
+    minima_in_x = np.argwhere(np.logical_and(np.abs(gx) < 0.2, ggx < -0.095))
+    minima_in_y = np.argwhere(np.logical_and(np.abs(gy) < 0.2, ggy < -0.095))
+    self._minima = np.concatenate((minima_in_x, minima_in_y), axis=0)
     self._values = np.stack([gx, gy], axis=-1)
-    
+
     self._origin = np.array(origin[:2], dtype=np.float32)
     self._origin -= resolution / 2.
     assert origin[YAW] == 0.
@@ -123,6 +133,10 @@ class ObstacleMap(object):
   @property
   def values(self):
     return self._values
+
+  @property
+  def minima(self):
+    return self._minima
 
   @property
   def resolution(self):
@@ -164,6 +178,12 @@ class ObstacleMap(object):
   def get_gradient(self, position):
     return self._values[self.get_index(position)]
 
+  def get_visibility(self, position):
+    return self._blurred_map[self.get_index(position)]
+
+  def get_occupancy(self, position):
+    return self._occupancy_map[self.get_index(position)] > 0.5
+
 
 def read_pgm(filename, byteorder='>'):
   """Read PGM file."""
@@ -199,13 +219,14 @@ def display_obst_map(obstacle_map, mode='all'):
   fig, ax = plt.subplots()
   obstacle_map.draw()
   #obstacle_map.draw_avoidance()
-  
+
+  plt.scatter(START_POSITION_2[X], START_POSITION_2[Y], s=10, marker='o', color='green', zorder=1000)
   plt.scatter(START_POSITION[X], START_POSITION[Y], s=10, marker='o', color='green', zorder=1000)
   plt.scatter(GOAL_POSITION[X], GOAL_POSITION[Y], s=10, marker='o', color='red', zorder=1000)
 
   # Plot field.
-  Xs, Ys = np.meshgrid(np.linspace(-WALL_OFFSET, WALL_OFFSET, 30),
-                     np.linspace(-WALL_OFFSET, WALL_OFFSET, 30))
+  Xs, Ys = np.meshgrid(np.linspace(-WALL_OFFSET, WALL_OFFSET, 60),
+                     np.linspace(-WALL_OFFSET, WALL_OFFSET, 60))
   U = np.zeros_like(Xs)
   V = np.zeros_like(Xs)
   for i in range(len(Xs)):
@@ -219,13 +240,26 @@ def display_obst_map(obstacle_map, mode='all'):
   # Uses Euler integration.
   dt = 0.01
   x = START_POSITION
+  x_2 = START_POSITION_2
   positions = [x]
-  for t in np.arange(0., 40., dt):
-    v = get_velocity(x, GOAL_POSITION, [], obstacle_map, mode)
+  positions_2 = [x_2]
+  for t in np.arange(0., 17., dt):
+    v = get_velocity(x, GOAL_POSITION, [(x_2, 0.8)], obstacle_map, mode)
+    v_2 = get_velocity(x_2, GOAL_POSITION, [(x, 0.8)], obstacle_map, mode)
     x = x + v * dt
+    x_2 = x_2 + v_2 * dt
     positions.append(x)
+    positions_2.append(x_2)
   positions = np.array(positions)
+  positions_2 = np.array(positions_2)
   plt.plot(positions[:, 0], positions[:, 1], lw=2, c='r')
+  plt.plot(positions_2[:, 0], positions_2[:, 1], lw=2, c='b')
+  '''
+  minima = np.array([obstacle_map.get_position(min[X], min[Y]) for min in obstacle_map.minima])
+  min_xs = minima[:, 0]
+  min_ys = minima[:, 1]
+  plt.scatter(min_xs, min_ys, s=1, lw=0.5, color='blue')
+  '''
 
   plt.axis('equal')
   plt.xlabel('x')

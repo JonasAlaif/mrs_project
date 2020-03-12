@@ -81,7 +81,7 @@ def make_walls(model):
         for y in range (0, 2):
             x_pos = (CITY_SIZE + WALL_WIDTH * 0.5) * ((x + y) - 1)
             y_pos = (CITY_SIZE + WALL_WIDTH * 0.5) * (x - y)
-            if x == 1 and y == 1:
+            if x == 1 and y == 1: # Set to False to not create exit
                 geom_col, geom_vis = make_link(model, "Wall_" + str(x) + "_" + str(y) + "_1", str(x_pos) + " " + str(- (CITY_SIZE + 2 * WALL_WIDTH) / 2.0) + " " + str(WALL_HEIGHT/2) + " 0 -0 0")
                 set_box_geom(geom_col, geom_vis, str(WALL_WIDTH) + " " + str(abs(x_pos) - WALL_WIDTH) + " " + str(WALL_HEIGHT))
                 geom_col, geom_vis = make_link(model, "Wall_" + str(x) + "_" + str(y) + "_2", str(x_pos) + " " + str((CITY_SIZE + 2 * WALL_WIDTH) / 2.0) + " " + str(WALL_HEIGHT/2) + " 0 -0 0")
