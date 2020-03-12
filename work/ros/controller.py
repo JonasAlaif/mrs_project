@@ -238,6 +238,10 @@ def run(args):
       targets[pol] = closest
 
 
+    if len(police.keys()) != 0:
+      all_police_positions_weighted = np.array([(pol[2].pose[:2], 0.5) for pol in police.values()])
+      all_police_positions = all_police_positions_weighted[:][0]
+
     # update baddie particles
     '''
     new_time = rospy.get_time()
@@ -245,13 +249,13 @@ def run(args):
       gtpose = baddies[name][2]
       if not gtpose.ready:
         continue
-      police_observed_pose = gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map)
+      police_observed_pose = gtpose.observed_pose(all_police_positions, obstacle_map)
       b_particles = baddies_particles[name]
       for particle in b_particles:
         if not particle.ready:
           particle.initialize(gtpose.pose)
       dt = new_time - curr_time
-      baddies_particles[name] = baddie_localization.update_particles(b_particles, dt, police_observed_pose[0], police_observed_pose[1], num_particles, obstacle_map)
+      baddies_particles[name] = baddie_localization.update_particles(b_particles, dt, police_observed_pose[0], police_observed_pose[1], num_particles, obstacle_map, all_police_positions)
     all_particles = [baddies_particles[name] for name in baddies.keys() if baddies[name][2].ready]
     if len(all_particles) != 0:
       baddie_localization.publish_particles(np.concatenate(all_particles))
@@ -279,10 +283,6 @@ def run(args):
       else:
         baddie_poses = None
 
-      other_police = dict(police)
-      del other_police[name]
-      other_police_pos = [(pol[2].pose[:2], 0.5) for pol in other_police.values()]
-
       u, w = 0, 0
       #if baddie_pose != None and baddie_pose[1] > 0.1:
       if baddie_poses is not None:
@@ -293,7 +293,7 @@ def run(args):
                                                    client_path_tuples,
                                                    occupancy_grid_base,
                                                    MAX_ITERATIONS,
-                                                   other_police_pos)
+                                                   all_police_positions_weighted)
 
       if u is not None and w is not None:
         vel_msg = Twist()

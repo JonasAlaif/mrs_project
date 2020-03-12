@@ -38,9 +38,9 @@ X = 0
 Y = 1
 YAW = 2
 
-def in_line_of_sight(from_pos, pol_poses, obstacle_map):
+def in_line_of_sight(from_pos, pol_positions, obstacle_map):
   uncertainties = np.empty(0)
-  for to_pos in pol_poses:
+  for to_pos in pol_positions:
     uncertainty = 1
     curr_pos = from_pos.copy()
     goal_pos = to_pos.copy()
@@ -106,7 +106,7 @@ class Particle(object):
     self._pose += delta_pose
     
 
-  def compute_weight(self, measured_pose, scale, occupancy_grid, police_poses):
+  def compute_weight(self, measured_pose, scale, occupancy_grid, police_positions):
     if not self.is_valid(occupancy_grid):
       self._weight = 0
       return
@@ -118,7 +118,7 @@ class Particle(object):
     if scale == 0:
       scale = 1e-6
 
-    line_of_sight_uncertainty = in_line_of_sight(self._pose, police_poses, occupancy_grid)
+    line_of_sight_uncertainty = in_line_of_sight(self._pose, police_positions, occupancy_grid)
 
     weights = np.zeros(2, dtype=np.float32)
     weights = norm.pdf(self.pose[:2], measured_pose[:2], scale)
@@ -137,12 +137,12 @@ def initialize():
   particle_publisher = rospy.Publisher('/particles', PointCloud, queue_size=1)
   frame_id = 0
 
-def update_particles(particles, dt, measured_pose, scale, num_particles, occupancy_grid, police_poses):
+def update_particles(particles, dt, measured_pose, scale, num_particles, occupancy_grid, police_positions):
   # Update particle positions and weights.
   total_weight = 0.
   for i, p in enumerate(particles):
     p.move(dt)
-    p.compute_weight(measured_pose, scale, occupancy_grid, police_poses)
+    p.compute_weight(measured_pose, scale, occupancy_grid, police_positions)
     total_weight += p.weight
 
   # Low variance re-sampling of particles.
