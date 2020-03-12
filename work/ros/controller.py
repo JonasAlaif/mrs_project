@@ -50,7 +50,7 @@ Y = 1
 YAW = 2
 
 
-SPEED = 0.1
+MAX_BADDIE_SPEED = 1.2
 
 EXIT_POSITION = np.array([9.0, 0.0])
 
@@ -94,7 +94,7 @@ def run(args):
   police = dict()
   baddies = dict()
   baddies_particles = dict()
-  num_particles = 20
+  num_particles = 30
   curr_time = rospy.get_time()
 
   # this will be a dictionary indexed on the robot name which gives you back the 3-tuple
@@ -255,7 +255,7 @@ def run(args):
         if not particle.ready:
           particle.initialize(gtpose.pose)
       dt = new_time - curr_time
-      baddies_particles[name] = baddie_localization.update_particles(b_particles, dt, police_observed_pose[0], police_observed_pose[1], num_particles, obstacle_map, all_police_positions)
+      baddies_particles[name] = baddie_localization.update_particles(b_particles, dt, police_observed_pose[0], police_observed_pose[1], num_particles, obstacle_map, all_police_positions, MAX_BADDIE_SPEED)
     all_particles = [baddies_particles[name] for name in baddies.keys() if baddies[name][2].ready]
     if len(all_particles) != 0:
       baddie_localization.publish_particles(np.concatenate(all_particles))
@@ -297,7 +297,7 @@ def run(args):
 
       if u is not None and w is not None:
         vel_msg = Twist()
-        vel_msg.linear.x = 3 * u
+        vel_msg.linear.x = u
         vel_msg.angular.z = w
         pub.publish(vel_msg)
 
@@ -345,7 +345,7 @@ def run(args):
 
       if u is not None and w is not None:
         vel_msg = Twist()
-        vel_msg.linear.x = 1.2 * u
+        vel_msg.linear.x = MAX_BADDIE_SPEED * u
         vel_msg.angular.z = w
         pub.publish(vel_msg)
 
