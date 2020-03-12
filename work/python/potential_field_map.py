@@ -86,15 +86,15 @@ def cap(v, max_speed):
 
 
 def get_velocity(position, goal_positions, avoid_positions, obstacle_map, mode='all'):
-  if mode in ('goal', 'all'):
+  if 'goal' in mode or 'all' in mode:
     v_goal = get_velocity_to_reach_goal(position, goal_positions)
   else:
     v_goal = np.zeros(2, dtype=np.float32)
-  if mode in ('friendlies', 'obstacle', 'all'):
+  if 'obstacle' in mode or 'all' in mode:
     v_avoid = get_velocity_to_avoid_obstacles(position, obstacle_map)
   else:
     v_avoid = np.zeros(2, dtype=np.float32)
-  if mode in ('friendlies', 'all'):
+  if 'friendlies' in mode or 'all' in mode:
     v_avoid_friends = get_velocity_to_avoid_positions(position, avoid_positions)
   else:
     v_avoid_friends = np.zeros(2, dtype=np.float32)

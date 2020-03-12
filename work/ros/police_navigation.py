@@ -47,7 +47,8 @@ obstacle_map = None
 
 def initialize():
   global obstacle_map
-  obstacle_map = potential_field_map.initialize('/home/ivan/catkin_ws/src/mrs_project/work/python/map_city_3')
+  local_dir = os.path.dirname(os.path.abspath(__file__))
+  obstacle_map = potential_field_map.initialize(local_dir + '/../python/map_city_3')
   #potential_field_map.display_obst_map(obstacle_map)
   return obstacle_map
 
@@ -130,7 +131,7 @@ def navigate_police(name, gtpose, laser, baddie_gtp, paths, occupancy_grid, max_
     return None, None
 
 
-def navigate_police_2(name, laser, gtpose, baddie_pose, paths, occupancy_grid, max_iterations, other_police):
+def navigate_police_2(name, laser, gtpose, baddie_poses, paths, occupancy_grid, max_iterations, other_police):
   global obstacle_map
   control_pos = gtpose.pose[:2] + np.array([EPSILON*np.cos(gtpose.pose[YAW]), EPSILON*np.sin(gtpose.pose[YAW])]) / 3
   v = potential_field_map.get_velocity(control_pos, baddie_poses, other_police, obstacle_map)

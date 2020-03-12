@@ -266,12 +266,11 @@ def run(args):
       if target is not None:
         # TODO maybe we can also use the police's field of view? ie police can only see things in a cone around them
         # shouldn't be too hard and might give interesting results
-        baddie_gtpose = baddies[target][2]
-        baddie_pose = baddie_gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map)
+        baddie_poses = np.array([(baddies[target][2].pose[:2], 1)])
+        # baddie_poses = baddie_gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map)
         # baddie_particle_poses = np.array([(p.pose[:2], 1) for p in baddies_particles[target]])
       else:
-        baddie_gtpose = None
-        baddie_pose = None
+        baddie_poses = None
 
       other_police = dict(police)
       del other_police[name]
@@ -279,11 +278,11 @@ def run(args):
 
       u, w = 0, 0
       #if baddie_pose != None and baddie_pose[1] > 0.1:
-      if baddie_pose is not None:
+      if baddie_poses is not None:
         u, w = police_navigation.navigate_police_2(name,
                                                    laser,
                                                    gtpose,
-                                                   baddie_gtpose.pose,
+                                                   baddie_poses,
                                                    client_path_tuples,
                                                    occupancy_grid_base,
                                                    MAX_ITERATIONS,

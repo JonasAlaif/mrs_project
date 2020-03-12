@@ -60,7 +60,8 @@ def initialize():
   global obstacle_map
   global pause_srv
   global unpause_srv
-  obstacle_map = potential_field_map.initialize('/home/ivan/catkin_ws/src/mrs_project/work/python/map_city_3')
+  local_dir = os.path.dirname(os.path.abspath(__file__))
+  obstacle_map = potential_field_map.initialize(local_dir + '/../python/map_city_3')
   pause_srv = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
   print('pause_srv:', pause_srv)
   unpause_srv = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
@@ -200,7 +201,7 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
           path = new_path
           print('path updated for', name)
 
-          pause_srv(EmptyRequest())
+          #pause_srv(EmptyRequest())
           # Plot environment.
           #fig, ax = plt.subplots()
           #occupancy_grid.draw()
@@ -237,8 +238,8 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
         print('got to the end of the path')
         return None, None
 
-    v = potential_field_map.get_velocity(lin_pos, path[0][:2], police, obstacle_map, mode='obstacle')
-    print(name, 'potential field velocity', v)
+    v = potential_field_map.get_velocity(lin_pos[:2], [(path[0][:2], 1)], [], obstacle_map)
+    #print(name, 'potential field velocity', v)
     u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
     return u, w
   elif gtpose.ready:
