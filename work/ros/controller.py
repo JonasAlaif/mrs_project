@@ -250,6 +250,7 @@ def run(args):
       all_police_positions_weighted = np.array([(pol[2].pose[:2], 0.5) for pol in police.values()])
       all_police_positions = np.array([pol[2].pose[:2] for pol in police.values()])
 
+    ### Uncomment to calculate particle postions
     '''
     # update baddie particles
     new_time = rospy.get_time()
@@ -283,17 +284,15 @@ def run(args):
 
       target = targets[name]
       if target is not None:
-        # TODO maybe we can also use the police's field of view? ie police can only see things in a cone around them
-        # shouldn't be too hard and might give interesting results
         baddie_poses = np.array([(baddies[target][2].pose, 1)])
-        # baddie_poses = baddie_gtpose.observed_pose([pol[2].pose for pol in police.values()], obstacle_map)
         baddie_particle_poses = np.array([(p.pose, 1) for p in baddies_particles[target]])
       else:
         baddie_poses = None
 
+      ### Set to baddie_particle_poses instead to use particles
       nav_goals = baddie_poses
+
       u, w = 0, 0
-      #if baddie_pose != None and baddie_pose[1] > 0.1:
       if baddie_poses is not None:
         u, w = police_navigation.navigate_police_2(name,
                                                    laser,
@@ -334,7 +333,8 @@ def run(args):
       del other_baddies[name]
       police_pos = [(pol[2].pose[:2], 1.5) for pol in police.values()]
       baddies_pos = [(bad[2].pose[:2], 0.8) for bad in other_baddies.values()]
-      '''
+      
+      ### Hybrid RRT* navigation
       u, w = baddie_navigation.navigate_baddie_hybrid(name,
                                                       laser,
                                                       gtpose,
@@ -343,8 +343,9 @@ def run(args):
                                                       MAX_ITERATIONS,
                                                       police_pos,
                                                       baddies_pos,
-                                                      MAX_BADDIE_SPEED)'''
-
+                                                      MAX_BADDIE_SPEED)
+      ### Use this for potential field navigation
+      '''
       u, w = baddie_navigation.navigate_baddie_pot_nai(None,
                                                       None,
                                                       gtpose,
@@ -353,7 +354,7 @@ def run(args):
                                                       None,
                                                       None,
                                                       police_pos + baddies_pos,
-                                                      MAX_BADDIE_SPEED)
+                                                      MAX_BADDIE_SPEED)'''
 
       if u is not None and w is not None:
         vel_msg = Twist()
