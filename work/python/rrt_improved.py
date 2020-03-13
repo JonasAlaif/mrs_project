@@ -196,16 +196,11 @@ def calc_cost(parent, child_pos, police):
   dist = np.linalg.norm(parent.position - child_pos)
   police_distance = float('inf')
   for pol in police:
-    # TODO rewrite this (currently just copy-pasted from https://gist.github.com/nim65s/5e9902cd67f094ce65b0)
     pol_d = seg_dist(parent.position, child_pos, pol[0])
     if pol_d < police_distance:
       police_distance = pol_d
-    #print('pol_dist: ', police_distance)
-  #police_distance = 0 # TODO calculate
-  # don't actually know if this works properly
   return parent.cost + dist + (4/(police_distance))**3
 
-# TODO rewrite this (currently just copy-pasted from https://gist.github.com/nim65s/5e9902cd67f094ce65b0)
 def seg_dist(A, B, P):
   """ segment line AB, point P, where each one is an array([x, y]) """
   if all(A == P) or all(B == P):
