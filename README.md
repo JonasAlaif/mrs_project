@@ -11,4 +11,5 @@ To run view particles in RViz:
 > roslaunch mrs_project rviz.launch
 
 Change baddie navigation method in work\ros\controller.py
+
 Toggle baddie localization in the same file
