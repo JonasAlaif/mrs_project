@@ -47,12 +47,12 @@ def check_line_of_sight(from_pos, to_pos, obstacle_map):
   step_size = np.linalg.norm(step)
   while step_size < np.linalg.norm(goal_pos - curr_pos):
     curr_uncertainty = obstacle_map.get_visibility(curr_pos)
-    uncertainty *= np.power(curr_uncertainty, step_size)
+    uncertainty *= curr_uncertainty
     #print(uncertainty)
-    if uncertainty < 1e-10:
+    if uncertainty < 1e-12:
       return 0.0
     curr_pos += step
-  return uncertainty
+  return np.power(uncertainty, step_size)
 
 def pose_with_uncertainty(pose, observer_poses, obstacle_map):
   uncertainties = np.array([check_line_of_sight(observer_pose[:2], pose[:2], obstacle_map) for observer_pose in observer_poses])
