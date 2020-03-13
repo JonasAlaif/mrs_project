@@ -1,5 +1,5 @@
-# mrs_project
-Robot Chase, Mobile Robot Systems Group Project. By jf613, img26 and rs968
+# Robot Chase
+Mobile Robot Systems Group Project. By jf613, img26 and rs968
 
 To run Gazebo:
 > roslaunch mrs_project gazebo_project.launch
