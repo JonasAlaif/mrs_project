@@ -47,8 +47,6 @@ X = 0
 Y = 1
 YAW = 2
 
-SPEED = 0.125
-
 #EXIT_POSITION = np.array([9.0, 0.0])
 EXIT_POSITION = np.array([9.0, 0.0, 0.0])
 
@@ -85,7 +83,7 @@ Arguments:
     occupancy_grid - the occupancy grid of the map
     max_iterations - the maximum number of times the rrt function should iterate
 '''
-def navigate_baddie_rrt(name, laser, gtpose, paths, occupancy_grid, max_iterations):
+def navigate_baddie_rrt(name, laser, gtpose, paths, occupancy_grid, max_iterations, max_speed):
   (path, goal, time_created) = paths[name]
 
   # get curret time (for updating path)
@@ -119,14 +117,14 @@ def navigate_baddie_rrt(name, laser, gtpose, paths, occupancy_grid, max_iteratio
     lin_pos = np.array([gtpose.pose[X] + EPSILON*np.cos(gtpose.pose[YAW]),\
                         gtpose.pose[Y] + EPSILON*np.sin(gtpose.pose[YAW])])
 
-    v = rrt_navigation.get_velocity(lin_pos, np.array(path, dtype=np.float32), speed=SPEED)
-    u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
+    v = rrt_navigation.get_velocity(lin_pos, np.array(path, dtype=np.float32), speed=max_speed)
+    u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=max_speed)
     return u, w
   else:
     return None, None
 
 
-def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_iterations, police, baddies):
+def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_iterations, police, baddies, max_speed):
   (path, goal, time_created) = paths[name]
   #print('navigating baddie')
 
@@ -253,7 +251,7 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
 
     v = potential_field_map.get_velocity(lin_pos[:2], [(path[0][:2], 1)], baddies, obstacle_map)
     #print(name, 'potential field velocity', v)
-    u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
+    u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=max_speed)
     return u, w
   elif not gtpose.ready:
     #class Struct(object): pass
@@ -267,24 +265,24 @@ def navigate_baddie_hybrid(name, laser, gtpose, paths, occupancy_grid, max_itera
 def sigmoid(x):
   return np.tanh(x/2)
 
-def baddie_braitenberg(name, laser, gtpose, paths, occupancy_grid, max_iterations, police):
+def baddie_braitenberg(name, laser, gtpose, paths, occupancy_grid, max_iterations, police, max_speed):
   (front, front_left, front_right, left, right) = laser.measurements
   # u in [m/s]
   # w in [rad/s] going counter-clockwise.
   closestDistSide = 0.05
   closestDistFront = 0.4
-  u = sigmoid(front-closestDistFront) * sigmoid(front_left+closestDistSide) * sigmoid(front_right+closestDistSide) * 1
+  u = sigmoid(front-closestDistFront) * sigmoid(front_left+closestDistSide) * sigmoid(front_right+closestDistSide) * max_speed
   w = sigmoid(5/front_right + 1/sigmoid(right) - 5/front_left - 1/sigmoid(left))
   return u, w
 
 
-def navigate_baddie_pot_nai(name, laser, gtpose, goal, paths, occupancy_grid, max_iterations, other_police):
+def navigate_baddie_pot_nai(name, laser, gtpose, goal, paths, occupancy_grid, max_iterations, police, max_speed):
   if goal is None:
     return 0, 0
   global obstacle_map
   control_pos = gtpose.pose[:2] + np.array([EPSILON*np.cos(gtpose.pose[YAW]), EPSILON*np.sin(gtpose.pose[YAW])]) / 3
-  v = potential_field_map.get_velocity(control_pos, [(goal[:2], 1)], other_police, obstacle_map, mode='all')
-  u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=SPEED)
+  v = potential_field_map.get_velocity(control_pos, [(goal[:2], 1)], police, obstacle_map, mode='all')
+  u, w = rrt_navigation.feedback_linearized(gtpose.pose, v, epsilon=EPSILON, speed=max_speed)
   #print('My pos: ', control_pos)
   #print('Target pos: ', baddie_gtp.pose[:2])
   #print('Direction pos: ', v)
